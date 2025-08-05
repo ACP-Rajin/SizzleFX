@@ -1,10 +1,21 @@
-#ifndef AUDIO_ENGINE_HPP
-#define AUDIO_ENGINE_HPP
+#ifndef SIZZLEFX_CORE_AUDIO_ENGINE_HPP
+#define SIZZLEFX_CORE_AUDIO_ENGINE_HPP
 
-namespace AudioEngine{
-  void init();
-  void cleanup();
-  // future: loadFile(), play(), stop(), applyEffect(), etc.
-}
+#include <vector>
+#include <string>
 
-#endif
+namespace SizzleFX{
+namespace Core{
+
+  class AudioEngine{
+    public:
+      bool loadWAV(const std::string& path);
+      const std::vector<float>& getSamples() const;
+
+    private:
+      std::vector<float> samples;// mono/left channel only for now
+  };
+}// namespace Core
+}// namespace SizzleFX
+
+#endif// SIZZLEFX_CORE_AUDIO_ENGINE_HPP

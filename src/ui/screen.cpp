@@ -31,7 +31,7 @@ namespace UI{
   }
 
   void shutdownUI(){
-    endwin(); // Restore terminal to normal mode
+    endwin();// Restore terminal to normal mode
   }
 
   void renderHeader(){
@@ -49,23 +49,26 @@ namespace UI{
   }
   void renderWaveform(const std::vector<float>& samples,int scrollIndex){
     attron(COLOR_PAIR(3));
+
     int height=8;
     int width=COLS-2;
-    int startRow=3;
+    int bottomRow=3+height-1;
 
     for(int x=0;x<width;++x){
       int index=scrollIndex+x;
       if(index>=static_cast<int>(samples.size()))break;
 
       float val=samples[index];
-      int level=static_cast<int>((val+1.0f)/2.0f*8);
-      if(level>8)level=8;
+      int level=static_cast<int>((val+1.0f)/2.0f*height);
+      if(level>height)level=height;
       if(level<0)level=0;
 
-      std::string block=waveformLevels[level];
-      mvprintw(startRow,x+1,"%s",block.c_str());
+      for(int h=0;h<height;++h){
+        int row=bottomRow-h;
+        std::string block=(h<level)?"█":" ";
+        mvprintw(row,x+1,"%s",block.c_str());
+      }
     }
-
     attroff(COLOR_PAIR(3));
   }
   void renderControls(){

@@ -23,4 +23,4 @@ test:
 	$(Compiler) $(CompilerFLAGS) $(SRC_TST) -o $(TSTOutputDIR) $(LDFLAGS)
 
 clean:
-	rm -f $(OutputDIR)
+	rm -f $(OutputDIR) $(TSTOutputDIR)

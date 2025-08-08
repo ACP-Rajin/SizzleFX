@@ -5,104 +5,105 @@
 #include <string>
 #include <vector>
 
-class Audio {
+class Audio{
 public:
-    std::string filePath;
-    std::string fileFormat;
+  std::string filePath;
+  std::string fileFormat;
 
-    uint32_t sampleRate = 0;
-    uint16_t bitDepth = 0;
-    uint16_t channels = 0;
-    uint64_t totalSamples = 0;
-    float durationSeconds = 0.0f;
+  uint32_t sampleRate=0;
+  uint16_t bitDepth=0;
+  uint16_t channels=0;
+  uint64_t totalSamples=0;
+  float durationSeconds=0.0f;
 
-    float maxAmplitude = 0.0f;
-    float averageAmplitude = 0.0f;
-    float rmsAmplitude = 0.0f;
+  float minAmplitude=0.0f;
+  float maxAmplitude=0.0f;
+  float averageAmplitude=0.0f;
+  float rmsAmplitude=0.0f;
 
-    uint32_t bitrate = 0;
-    uint64_t fileSizeBytes = 0;
-    uint64_t dataChunkSize = 0;
+  uint32_t bitrate=0;
+  uint64_t fileSizeBytes=0;
+  uint64_t dataChunkSize=0;
 
-    std::vector<float> frequencySpectrum;
+  std::vector<float>frequencySpectrum;
 
-    bool isCompressed = false;
-    bool isValid = false;
+  bool isCompressed=false;
+  bool isValid=false;
 
-    int SINE_WAVE = 0, SQUARE_WAVE = 1, SAWTOOTH_WAVE = 2;
+  int SINE_WAVE=0;
+  int SQUARE_WAVE=1;
+  int SAWTOOTH_WAVE=2;
 
-    Audio(std::string path) {
-        filePath = path;
-        parseWAV();
-    }
+  Audio(std::string path){
+    filePath=path;
+    parseWAV();
+  }
 
 private:
-    void parseWAV() {
-        std::ifstream file(filePath, std::ios::binary);
-        if (!file) {
-            std::cerr << "Error: Could not open file " << filePath << "\n";
-            return;
-        }
-
-        // Get file size
-        file.seekg(0, std::ios::end);
-        fileSizeBytes = file.tellg();
-        file.seekg(0, std::ios::beg);
-
-        // Read header
-        char riff[4];
-        file.read(riff, 4);
-        if (std::strncmp(riff, "RIFF", 4) != 0) {
-            std::cerr << "Error: Not a valid RIFF file.\n";
-            return;
-        }
-
-        file.seekg(8, std::ios::beg); // Skip RIFF size
-        char wave[4];
-        file.read(wave, 4);
-        if (std::strncmp(wave, "WAVE", 4) != 0) {
-            std::cerr << "Error: Not a valid WAVE file.\n";
-            return;
-        }
-
-        // Read chunks until we find "fmt "
-        char chunkId[4];
-        uint32_t chunkSize;
-        while (file.read(chunkId, 4)) {
-            file.read(reinterpret_cast<char*>(&chunkSize), 4);
-
-            if (std::strncmp(chunkId, "fmt ", 4) == 0) {
-                uint16_t audioFormat;
-                file.read(reinterpret_cast<char*>(&audioFormat), 2);
-                file.read(reinterpret_cast<char*>(&channels), 2);
-                file.read(reinterpret_cast<char*>(&sampleRate), 4);
-
-                uint32_t byteRate;
-                file.read(reinterpret_cast<char*>(&byteRate), 4);
-
-                uint16_t blockAlign;
-                file.read(reinterpret_cast<char*>(&blockAlign), 2);
-                file.read(reinterpret_cast<char*>(&bitDepth), 2);
-
-                isCompressed = (audioFormat != 1); // PCM = 1
-
-                file.seekg(chunkSize - 16, std::ios::cur); // skip extra fmt data
-            }
-            else if (std::strncmp(chunkId, "data", 4) == 0) {
-                dataChunkSize = chunkSize;
-                break;
-            }
-            else {
-                file.seekg(chunkSize, std::ios::cur);
-            }
-        }
-
-        // Calculate derived values
-        totalSamples = dataChunkSize / (bitDepth / 8);
-        durationSeconds = (float)totalSamples / (sampleRate * channels);
-        bitrate = sampleRate * channels * bitDepth;
-
-        isValid = true;
-        fileFormat = "wav";
+  void parseWAV(){
+    std::ifstream file(filePath,std::ios::binary);
+    if(!file){
+      std::cerr<<"Error: Could not open file "<<filePath<<"\n";
+      return;
     }
+
+    // Get file size
+    file.seekg(0,std::ios::end);
+    fileSizeBytes=file.tellg();
+    file.seekg(0,std::ios::beg);
+
+    // Read header
+    char riff[4];
+    file.read(riff,4);
+    if(std::strncmp(riff,"RIFF",4)!=0){
+      std::cerr<<"Error: Not a valid RIFF file.\n";
+      return;
+    }
+
+    file.seekg(8,std::ios::beg);//Skip RIFF size
+    char wave[4];
+    file.read(wave,4);
+    if(std::strncmp(wave,"WAVE",4)!=0){
+      std::cerr<<"Error: Not a valid WAVE file.\n";
+      return;
+    }
+
+    //Read chunks until we find "fmt "
+    char chunkId[4];
+    uint32_t chunkSize;
+    while(file.read(chunkId,4)){
+      file.read(reinterpret_cast<char*>(&chunkSize),4);
+
+      if(std::strncmp(chunkId,"fmt ",4)==0){
+        uint16_t audioFormat;
+        file.read(reinterpret_cast<char*>(&audioFormat),2);
+        file.read(reinterpret_cast<char*>(&channels),2);
+        file.read(reinterpret_cast<char*>(&sampleRate),4);
+
+        uint32_t byteRate;
+        file.read(reinterpret_cast<char*>(&byteRate),4);
+
+        uint16_t blockAlign;
+        file.read(reinterpret_cast<char*>(&blockAlign),2);
+        file.read(reinterpret_cast<char*>(&bitDepth),2);
+
+        isCompressed=(audioFormat!=1);//PCM=1
+
+        file.seekg(chunkSize-16,std::ios::cur);//skip extra fmt data
+      }else if(std::strncmp(chunkId,"data",4)==0){
+        dataChunkSize=chunkSize;
+        break;
+      }else{
+        file.seekg(chunkSize,std::ios::cur);
+      }
+    }
+
+    // Calculate derived values
+    totalSamples=dataChunkSize / (bitDepth / 8);
+    durationSeconds=(float)totalSamples / (sampleRate * channels);
+    bitrate=sampleRate * channels * bitDepth;
+
+    isValid=true;
+    fileFormat="wav";
+  }
 };

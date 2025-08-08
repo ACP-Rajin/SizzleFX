@@ -13,25 +13,25 @@ namespace UI{
   };
 
   void initUI(){
-    initscr();              // Start ncurses mode
-    cbreak();               // Disable line buffering
-    noecho();               // Don't echo typed characters
-    curs_set(0);            // Hide cursor
-    timeout(0);             // Non-blocking getch()
-    keypad(stdscr,TRUE);   // Enable special keys
-    start_color();          // Enable color
+    initscr();           //Start ncurses mode
+    cbreak();            //Disable line buffering
+    noecho();            //Don't echo typed characters
+    curs_set(0);         //Hide cursor
+    timeout(0);          //Non-blocking getch()
+    keypad(stdscr,TRUE); //Enable special keys
+    start_color();       //Enable color
 
     // Define color pairs (foreground, background)
-    init_pair(1,COLOR_WHITE,COLOR_BLUE);   // Header
-    init_pair(2,COLOR_BLACK,COLOR_WHITE);  // Menu
-    init_pair(3,COLOR_GREEN,COLOR_BLACK);  // Waveform
-    init_pair(4,COLOR_YELLOW,COLOR_BLACK); // Controls
-    init_pair(5,COLOR_CYAN,COLOR_BLACK);   // Effects
-    init_pair(6,COLOR_WHITE,COLOR_BLACK);  // Status
+    init_pair(1,COLOR_WHITE,COLOR_BLUE);   //Header
+    init_pair(2,COLOR_BLACK,COLOR_WHITE);  //Menu
+    init_pair(3,COLOR_GREEN,COLOR_BLACK);  //Waveform
+    init_pair(4,COLOR_YELLOW,COLOR_BLACK); //Controls
+    init_pair(5,COLOR_CYAN,COLOR_BLACK);   //Effects
+    init_pair(6,COLOR_WHITE,COLOR_BLACK);  //Status
   }
 
   void shutdownUI(){
-    endwin();// Restore terminal to normal mode
+    endwin();//Restore terminal to normal mode
   }
 
   void renderHeader(){
@@ -106,5 +106,5 @@ namespace UI{
     refresh();
   }
 
-} // namespace UI
-} // namespace SizzleFX
+}
+}

@@ -11,7 +11,7 @@ int main(int argc,char** argv){
 
   // Check for input .wav file
   if(argc<2){
-    std::cerr << "Usage: " << argv[0] << " <audio_file.wav>\n";
+    std::cerr<<"Usage: "<< argv[0]<<" <audio_file.wav>\n";
     return 1;
   }
 

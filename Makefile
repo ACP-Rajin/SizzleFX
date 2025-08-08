@@ -1,6 +1,7 @@
 # Compiler Stuff
 Compiler=g++
-CompilerFLAGS=-Wall -Wextra -std=c++17
+C++Version=17
+CompilerFLAGS=-Wall -Wextra -std=c++$(C++Version)
 LDFLAGS=-lncurses -lsndfile
 # File Stuff
 SRC=src/main.cpp\
@@ -9,8 +10,17 @@ SRC=src/main.cpp\
 
 OutputDIR=bin/sizzlefx
 
+SRC_TST=tst/main.cpp\
+        tst/core/test.cpp
+
+TSTOutputDIR=bin/sizzlefx.tst
+
+
 all:
 	$(Compiler) $(CompilerFLAGS) $(SRC) -o $(OutputDIR) $(LDFLAGS)
+
+test:
+	$(Compiler) $(CompilerFLAGS) $(SRC_TST) -o $(TSTOutputDIR) $(LDFLAGS)
 
 clean:
 	rm -f $(OutputDIR)

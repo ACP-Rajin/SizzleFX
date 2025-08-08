@@ -1,0 +1,45 @@
+tested from https://www.maztr.com/audiofileanalyzer
+
+File Name : output.wav
+Channels : 1
+Sample Rate : 48000
+Precision : 32-bit
+Duration : 00:00:02.00 = 96000 samples ~ 150 CDDA sectors
+File Size : 384k
+Bit Rate : 1.54M
+Sample Encoding: 32-bit Signed Integer PCM
+ 
+File Detail
+Samples read: 96000
+Length (seconds): 2.000000
+Scaled by: 2147483647.0
+Maximum amplitude: 1.000000
+Minimum amplitude: -1.000000
+Midline amplitude: 0.000000
+Mean norm: 0.636599
+Mean amplitude: 0.000000
+RMS amplitude: 0.707107
+Maximum delta: 0.019634
+Minimum delta: 0.000000
+Mean delta: 0.012500
+RMS delta: 0.013884
+Rough frequency: 149
+Volume adjustment: 1.000
+Can't guess the type
+ 
+Channel Detail
+DC offset 0.000000
+Min level -1.000000
+Max level 1.000000
+Pk lev dB -0.00
+RMS lev dB -3.01
+RMS Pk dB -2.96
+RMS Tr dB -3.09
+Crest factor 1.41
+Flat factor 0.00
+Pk count 600
+Bit-depth 32/32
+Num samples 96.0k
+Length s 2.000
+Scale max 1.000000
+Window s 0.050

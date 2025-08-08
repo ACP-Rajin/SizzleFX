@@ -20,4 +20,4 @@ namespace UI{
 }
 }
 
-#endif // SIZZLEFX_UI_SCREEN_HPP
+#endif

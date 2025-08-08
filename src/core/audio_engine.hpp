@@ -10,12 +10,12 @@ namespace Core{
   class AudioEngine{
     public:
       bool loadWAV(const std::string& path);
-      const std::vector<float>& getSamples() const;
+      const std::vector<float>& getSamples()const;
 
     private:
       std::vector<float> samples;// mono/left channel only for now
   };
-}// namespace Core
-}// namespace SizzleFX
+}
+}
 
-#endif// SIZZLEFX_CORE_AUDIO_ENGINE_HPP
+#endif

@@ -106,7 +106,12 @@ struct AudioMetadata{
     std::cout << "  Title: " << title << '\n';
     std::cout << "  Artist: " << artist << '\n';
     std::cout << "  Album: " << album << '\n';
-    std::cout << "  Year: " << year << '\n';
+    std::cout << "  Year: " << year << "\n\n";
+
+    std::cout << "Others:\n";
+    std::cout << "  Sample Count: " << getSampleCount() << '\n';
+    std::cout << "  Samples Per Chann: " << getSamplesPerChannel() << '\n';
+    std::cout << "  Duration: " << getDuration() << '\n';
   }
 };
 class Audio{

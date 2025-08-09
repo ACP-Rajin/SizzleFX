@@ -6,38 +6,56 @@
 #include <vector>
 
 struct AudioMetadata{
-  //Basic info
-  std::string filePath;//Full path to the file
-  std::string format;//e.g., "wav", "mp3", "ogg", "obb"
-  uint64_t fileSizeBytes;//Total size in bytes
-  //Audio format info
-  uint16_t audioFormatCode;//PCM=1, MP3=85, OGG=??? (depends on format)
-  uint16_t numChannels;//Mono=1, Stereo=2
-  uint32_t sampleRate;//Hz
-  uint32_t byteRate;//bytes/sec (sampleRate * channels * bits/8)
-  uint16_t bitsPerSample;//8,16,24,32 bits
-  uint64_t totalSamples;//total frames * channels
-  //Time & frequency
-  double durationSeconds;//total length in seconds
-  double avgFrequency;//Optional: average frequency content (from FFT)
-  //Amplitude analysis
-  float minAmplitude;//Lowest amplitude (-1.0f)
-  float maxAmplitude;//Highest amplitude (1.0f)
-  float rmsAmplitude;//Root Mean Square amplitude
-  bool clippingDetected;//True if > 0.99 amplitude found
-  //Compression/bitrate info
-  bool isVBR;//Variable Bit Rate
-  uint32_t bitrateKbps;//Average bitrate in kbps
-  //Optional tags (ID3/Vorbis Comments)
+  // Basic info
+  std::string filePath;
+  std::string format; // e.g.,"wav","mp3","ogg","obb"
+  uint64_t fileSizeBytes;
+
+  // Audio format info
+  uint16_t audioFormatCode; // PCM=1, MP3=85, OGG=??? (depends on format)
+  uint16_t numChannels;     // Mono=1,Stereo=2
+  uint32_t sampleRate;
+  uint32_t byteRate;        // bytes/sec (sampleRate * channels * bits/8)
+  uint16_t bitsPerSample;   // 8,16,24,32 bits
+  uint64_t totalSamples;    // total frames * channels
+  uint64_t totalFrames;     // per-channel frames
+  bool littleEndian;
+
+  // Sample type
+  enum class SampleType{INT8,INT16,INT24,INT32,FLOAT32,FLOAT64};
+  SampleType sampleType;
+
+  // Time & frequency
+  double durationSeconds;
+  double avgFrequency;
+
+  // Amplitude analysis
+  float minAmplitude;    // Lowest amplitude (-1.0f)
+  float maxAmplitude;    // Highest amplitude (1.0f)
+  float rmsAmplitude;    // Root Mean Square amplitude
+  bool clippingDetected; // True if > 0.99 amplitude found
+
+  // Compression / bitrate info
+  bool isVBR;           // Variable Bit Rate
+  uint32_t bitrateKbps; // Average bitrate in kbps
+
+  // Optional tags (ID3/Vorbis Comments)
   std::string title;
   std::string artist;
   std::string album;
   std::string year;
-  //Audio data
-  std::vector<float>samples;//Interleaved normalized audio samples [-1.0f, 1.0f]
+
+  // Audio data
+  std::vector<float>samples;   // normalized audio samples [-1, 1]
+  std::vector<uint8_t>rawData; // optional raw file data
+
   //Helper methods
   inline size_t getSampleCount()const{return samples.size();}
   inline size_t getSamplesPerChannel()const{return numChannels?samples.size()/numChannels:0;}
+  // Helpers
+  inline size_t getSampleCount()const{return samples.size();}
+  inline size_t getSamplesPerChannel()const{return numChannels ? samples.size() / numChannels : 0;}
+  inline double getDuration()const{return sampleRate ? static_cast<double>(totalFrames) / sampleRate : 0.0;}
 };
 class Audio{
 public:

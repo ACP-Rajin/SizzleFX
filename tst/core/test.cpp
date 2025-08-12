@@ -23,12 +23,11 @@ struct WAVHeader{
   uint32_t subchunk2Size;
 };
 
-struct AudioMetadata{
-  // Basic info
+class Audio{
+public:
   std::string filePath;
   std::string format; // e.g.,"wav","mp3","ogg","obb"
   uint64_t fileSizeBytes;
-
   // Audio format info
   uint16_t audioFormatCode; // PCM=1, MP3=85, OGG=??? (depends on format)
   uint16_t numChannels;     // Mono=1,Stereo=2
@@ -38,21 +37,17 @@ struct AudioMetadata{
   uint64_t totalSamples;    // total frames * channels
   uint64_t totalFrames;     // per-channel frames
   bool littleEndian;
-
   // Sample type
   enum class SampleType{INT8,INT16,INT24,INT32,FLOAT32,FLOAT64};
   SampleType sampleType;
-
   // Time & frequency
   double durationSeconds;
   double avgFrequency;
-
   // Amplitude analysis
-  float minAmplitude;    // Lowest amplitude (-1.0f)
-  float maxAmplitude;    // Highest amplitude (1.0f)
+  float minAmplitude;
+  float maxAmplitude;
   float rmsAmplitude;    // Root Mean Square amplitude
   bool clippingDetected; // True if > 0.99 amplitude found
-
   // Compression / bitrate info
   bool isVBR;           // Variable Bit Rate
   uint32_t bitrateKbps; // Average bitrate in kbps
@@ -72,23 +67,18 @@ struct AudioMetadata{
   inline size_t getSamplesPerChannel()const{return numChannels ? samples.size() / numChannels : 0;}
   inline double getDuration()const{return sampleRate ? static_cast<double>(totalFrames) / sampleRate : 0.0;}
 
-};
-class Audio{
-public:
   int SINE_WAVE=0;
   int SQUARE_WAVE=1;
   int SAWTOOTH_WAVE=2;
 
-  AudioMetadata am;
-
   WAVHeader header;// Optional for testing
 
   Audio(std::string path){
-    loadWAV(path,am);
+    loadWAV(path);
   }
 
 private:
-  bool loadWAV(const std::string& filePath,AudioMetadata& metadata){
+  bool loadWAV(const std::string& filePath){
     std::ifstream file(filePath,std::ios::binary);
 
     if(!file){
@@ -109,26 +99,26 @@ private:
       return false;
     }
 
-    // Fill metadata basics
-    metadata.filePath=filePath;
-    metadata.format=header.format;
+    // Fill this->basics
+    this->filePath=filePath;
+    this->format=header.format;
     file.seekg(0,std::ios::end);
-    metadata.fileSizeBytes=file.tellg();
+    this->fileSizeBytes=file.tellg();
     file.seekg(sizeof(WAVHeader),std::ios::beg);
 
-    metadata.audioFormatCode=header.audioFormat;
-    metadata.numChannels=header.numChannels;
-    metadata.sampleRate=header.sampleRate;
-    metadata.byteRate=header.byteRate;
-    metadata.bitsPerSample=header.bitsPerSample;
-    metadata.littleEndian=true; // WAV is little-endian
+    this->audioFormatCode=header.audioFormat;
+    this->numChannels=header.numChannels;
+    this->sampleRate=header.sampleRate;
+    this->byteRate=header.byteRate;
+    this->bitsPerSample=header.bitsPerSample;
+    this->littleEndian=true; // WAV is little-endian
 
     // Figure out sample type
     switch(header.bitsPerSample){
-      case 8:  metadata.sampleType=AudioMetadata::SampleType::INT8;break;
-      case 16: metadata.sampleType=AudioMetadata::SampleType::INT16;break;
-      case 24: metadata.sampleType=AudioMetadata::SampleType::INT24;break;
-      case 32: metadata.sampleType=(header.audioFormat==3)?AudioMetadata::SampleType::FLOAT32:AudioMetadata::SampleType::INT32;break;
+      case 8:  this->sampleType=SampleType::INT8;break;
+      case 16: this->sampleType=SampleType::INT16;break;
+      case 24: this->sampleType=SampleType::INT24;break;
+      case 32: this->sampleType=(header.audioFormat==3)?SampleType::FLOAT32:SampleType::INT32;break;
       default: std::cerr << "Unsupported bit depth: " << header.bitsPerSample << "\n";
                return false;
     }
@@ -136,12 +126,12 @@ private:
     // Audio data reading
     size_t bytesPerSample=header.bitsPerSample/8;
     size_t totalSamples=header.subchunk2Size/bytesPerSample;
-    metadata.totalSamples=totalSamples;
-    metadata.totalFrames=totalSamples/header.numChannels;
+    this->totalSamples=totalSamples;
+    this->totalFrames=totalSamples/header.numChannels;
 
     // Read raw data
-    metadata.rawData.resize(header.subchunk2Size);
-    file.read(reinterpret_cast<char*>(metadata.rawData.data()),header.subchunk2Size);
+    this->rawData.resize(header.subchunk2Size);
+    file.read(reinterpret_cast<char*>(this->rawData.data()),header.subchunk2Size);
 
     if(!file){
       std::cerr << "Error: Could not read WAV data\n";
@@ -149,62 +139,60 @@ private:
     }
 
     // Convert to normalized float samples [-1, 1]
-    metadata.samples.resize(totalSamples);
-    const uint8_t* raw=metadata.rawData.data();
+    this->samples.resize(totalSamples);
+    const uint8_t* raw=this->rawData.data();
 
     if (header.bitsPerSample==8){
       for(size_t i=0;i<totalSamples;++i){
-        metadata.samples[i]=(static_cast<int>(raw[i])-128)/128.0f;
+        this->samples[i]=(static_cast<int>(raw[i])-128)/128.0f;
       }
     }else if(header.bitsPerSample==16){
       for(size_t i=0;i<totalSamples;++i){
         int16_t sample=*reinterpret_cast<const int16_t*>(raw + i * 2);
-        metadata.samples[i]=sample/32768.0f;
+        this->samples[i]=sample/32768.0f;
       }
     }else if(header.bitsPerSample==24){
       for(size_t i=0;i<totalSamples;++i){
         int32_t sample=(raw[i*3+2] << 24)|(raw[i*3+1] << 16)|(raw[i*3] << 8);
         sample >>= 8;
-        metadata.samples[i]=sample/8388608.0f;
+        this->samples[i]=sample/8388608.0f;
       }
     }else if(header.bitsPerSample==32 && header.audioFormat==1){
       for(size_t i=0;i<totalSamples;++i){
         int32_t sample= *reinterpret_cast<const int32_t*>(raw + i * 4);
-        metadata.samples[i]=sample / 2147483648.0f;
+        this->samples[i]=sample / 2147483648.0f;
       }
     }else if(header.bitsPerSample==32 && header.audioFormat==3){
       for(size_t i=0;i<totalSamples;++i){
-        metadata.samples[i]=*reinterpret_cast<const float*>(raw + i * 4);
+        this->samples[i]=*reinterpret_cast<const float*>(raw + i * 4);
       }
     }
 
     // Amplitude analysis
-    metadata.minAmplitude=1.0f;
-    metadata.maxAmplitude=-1.0f;
+    this->minAmplitude=1.0f;
+    this->maxAmplitude=-1.0f;
     double sumSquares=0.0;
-    for(float s:metadata.samples){
-      if(s<metadata.minAmplitude)metadata.minAmplitude=s;
-      if(s>metadata.maxAmplitude)metadata.maxAmplitude=s;
+    for(float s:this->samples){
+      if(s<this->minAmplitude)this->minAmplitude=s;
+      if(s>this->maxAmplitude)this->maxAmplitude=s;
       sumSquares += s * s;
     }
-    metadata.rmsAmplitude=static_cast<float>(std::sqrt(sumSquares / metadata.samples.size()));
-    metadata.clippingDetected=(metadata.maxAmplitude >= 0.99f || metadata.minAmplitude <= -0.99f);
+    this->rmsAmplitude=static_cast<float>(std::sqrt(sumSquares / this->samples.size()));
+    this->clippingDetected=(this->maxAmplitude >= 0.99f || this->minAmplitude <= -0.99f);
 
     // Duration
-    metadata.durationSeconds=static_cast<double>(metadata.totalFrames) / metadata.sampleRate;
+    this->durationSeconds=static_cast<double>(this->totalFrames) / this->sampleRate;
 
     // No avgFrequency calculation yet (requires FFT)
-    metadata.avgFrequency=0.0;
+    this->avgFrequency=0.0;
 
     // No compression info (WAV PCM is uncompressed)
-    metadata.isVBR=false;
-    metadata.bitrateKbps=static_cast<uint32_t>(metadata.byteRate * 8 / 1000);
+    this->isVBR=false;
+    this->bitrateKbps=static_cast<uint32_t>(this->byteRate * 8 / 1000);
 
     return true;
   }
 };
-
-
 
 // class Audio{
 // public:

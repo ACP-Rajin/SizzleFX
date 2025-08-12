@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <ncurses.h>
 #include "core/test.cpp"
 
@@ -18,7 +17,7 @@ void printHeader(WAVHeader &header){
   std::cout.write(header.subchunk2ID,4); std::cout << "\n";
   std::cout << "  Subchunk2 Size: " << header.subchunk2Size << "\n";
 }
-void printMetadata(AudioMetadata metadata){
+void printMetadata(Audio &metadata){
   std::cout << "Basic Info:\n";
   std::cout << "  File Path: " << metadata.filePath << '\n';
   std::cout << "  Format: " << metadata.format << '\n';
@@ -70,7 +69,7 @@ int main(int argc,char** argv){
 
   printHeader(audio.header);
   std::cout << std::endl;
-  printMetadata(audio.am);
+  printMetadata(audio);
 
   return 0;
 }

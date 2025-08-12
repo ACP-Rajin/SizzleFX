@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstdio>
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -6,20 +7,20 @@
 #include <string>
 #include <vector>
 
-struct WAVHeaderRaw{
-  char chunkID[4];     // "RIFF"
+struct WAVHeader{
+  char chunkID[4];       // "RIFF"
   uint32_t chunkSize;
-  char format[4];      // "WAVE"
-  char subchunk1ID[4]; // "fmt "
+  char format[4];        // "WAVE"
+  char subchunk1ID[4];   // "fmt "
   uint32_t subchunk1Size;
-  uint16_t audioFormat;
+  uint16_t audioFormat;  // 1 = PCM
   uint16_t numChannels;
   uint32_t sampleRate;
   uint32_t byteRate;
   uint16_t blockAlign;
   uint16_t bitsPerSample;
-  char subchunk2ID[4];    // "data"
-  uint32_t subchunk2Size; // size of the audio data in bytes
+  char subchunk2ID[4];   // "data"
+  uint32_t subchunk2Size;
 };
 
 struct AudioMetadata{
@@ -80,65 +81,67 @@ public:
 
   AudioMetadata am;
 
+  WAVHeader header;// Optional for testing
+
   Audio(std::string path){
     loadWAV(path,am);
   }
 
 private:
-  bool loadWAV(const std::string& path,AudioMetadata& meta){
-    std::ifstream file(path,std::ios::binary);
+  bool loadWAV(const std::string& filePath,AudioMetadata& metadata){
+    std::ifstream file(filePath,std::ios::binary);
 
     if(!file){
-      std::cerr << "Error: Could not open file " << path << "\n";
+      std::cerr << "Error: Could not open file " << filePath << "\n";
       return false;
     }
 
-    WAVHeaderRaw hdr;
-    file.read(reinterpret_cast<char*>(&hdr),sizeof(WAVHeaderRaw));
+    file.read(reinterpret_cast<char*>(&header),sizeof(WAVHeader));
 
     if(!file){
       std::cerr << "Error: Could not read WAV header\n";
       return false;
     }
+
     // Check header validity
-    if(std::string(hdr.chunkID,4)!="RIFF"||std::string(hdr.format,4)!="WAVE"){
+    if(std::string(header.chunkID,4)!="RIFF"||std::string(header.format,4)!="WAVE"){
       std::cerr << "Error: Not a valid WAV file\n";
       return false;
     }
 
     // Fill metadata basics
-    meta.filePath=path;
-    meta.format="wav";
+    metadata.filePath=filePath;
+    metadata.format=header.format;
     file.seekg(0,std::ios::end);
-    meta.fileSizeBytes=file.tellg();
-    file.seekg(sizeof(WAVHeaderRaw),std::ios::beg);
+    metadata.fileSizeBytes=file.tellg();
+    file.seekg(sizeof(WAVHeader),std::ios::beg);
 
-    meta.audioFormatCode=hdr.audioFormat;
-    meta.numChannels=hdr.numChannels;
-    meta.sampleRate=hdr.sampleRate;
-    meta.byteRate=hdr.byteRate;
-    meta.bitsPerSample=hdr.bitsPerSample;
-    meta.littleEndian=true; // WAV is little-endian
+    metadata.audioFormatCode=header.audioFormat;
+    metadata.numChannels=header.numChannels;
+    metadata.sampleRate=header.sampleRate;
+    metadata.byteRate=header.byteRate;
+    metadata.bitsPerSample=header.bitsPerSample;
+    metadata.littleEndian=true; // WAV is little-endian
 
     // Figure out sample type
-    switch(hdr.bitsPerSample){
-      case 8:  meta.sampleType=AudioMetadata::SampleType::INT8;break;
-      case 16: meta.sampleType=AudioMetadata::SampleType::INT16;break;
-      case 24: meta.sampleType=AudioMetadata::SampleType::INT24;break;
-      case 32: meta.sampleType=(hdr.audioFormat==3)?AudioMetadata::SampleType::FLOAT32:AudioMetadata::SampleType::INT32;break;
-      default: std::cerr << "Unsupported bit depth: " << hdr.bitsPerSample << "\n";
+    switch(header.bitsPerSample){
+      case 8:  metadata.sampleType=AudioMetadata::SampleType::INT8;break;
+      case 16: metadata.sampleType=AudioMetadata::SampleType::INT16;break;
+      case 24: metadata.sampleType=AudioMetadata::SampleType::INT24;break;
+      case 32: metadata.sampleType=(header.audioFormat==3)?AudioMetadata::SampleType::FLOAT32:AudioMetadata::SampleType::INT32;break;
+      default: std::cerr << "Unsupported bit depth: " << header.bitsPerSample << "\n";
                return false;
     }
 
     // Audio data reading
-    size_t bytesPerSample=hdr.bitsPerSample/8;
-    size_t totalSamples=hdr.subchunk2Size/bytesPerSample;
-    meta.totalSamples=totalSamples;
-    meta.totalFrames=totalSamples/hdr.numChannels;
+    size_t bytesPerSample=header.bitsPerSample/8;
+    size_t totalSamples=header.subchunk2Size/bytesPerSample;
+    metadata.totalSamples=totalSamples;
+    metadata.totalFrames=totalSamples/header.numChannels;
 
     // Read raw data
-    meta.rawData.resize(hdr.subchunk2Size);
-    file.read(reinterpret_cast<char*>(meta.rawData.data()),hdr.subchunk2Size);
+    metadata.rawData.resize(header.subchunk2Size);
+    file.read(reinterpret_cast<char*>(metadata.rawData.data()),header.subchunk2Size);
 
     if(!file){
       std::cerr << "Error: Could not read WAV data\n";
@@ -146,56 +149,56 @@ private:
     }
 
     // Convert to normalized float samples [-1, 1]
-    meta.samples.resize(totalSamples);
-    const uint8_t* raw=meta.rawData.data();
+    metadata.samples.resize(totalSamples);
+    const uint8_t* raw=metadata.rawData.data();
 
-    if (hdr.bitsPerSample==8){
+    if (header.bitsPerSample==8){
       for(size_t i=0;i<totalSamples;++i){
-        meta.samples[i]=(static_cast<int>(raw[i])-128)/128.0f;
+        metadata.samples[i]=(static_cast<int>(raw[i])-128)/128.0f;
       }
-    }else if(hdr.bitsPerSample==16){
+    }else if(header.bitsPerSample==16){
       for(size_t i=0;i<totalSamples;++i){
         int16_t sample=*reinterpret_cast<const int16_t*>(raw + i * 2);
-        meta.samples[i]=sample/32768.0f;
+        metadata.samples[i]=sample/32768.0f;
       }
-    }else if(hdr.bitsPerSample==24){
+    }else if(header.bitsPerSample==24){
       for(size_t i=0;i<totalSamples;++i){
         int32_t sample=(raw[i*3+2] << 24)|(raw[i*3+1] << 16)|(raw[i*3] << 8);
         sample >>= 8;
-        meta.samples[i]=sample/8388608.0f;
+        metadata.samples[i]=sample/8388608.0f;
       }
-    }else if(hdr.bitsPerSample==32 && hdr.audioFormat==1){
+    }else if(header.bitsPerSample==32 && header.audioFormat==1){
       for(size_t i=0;i<totalSamples;++i){
         int32_t sample= *reinterpret_cast<const int32_t*>(raw + i * 4);
-        meta.samples[i]=sample / 2147483648.0f;
+        metadata.samples[i]=sample / 2147483648.0f;
       }
-    }else if(hdr.bitsPerSample==32 && hdr.audioFormat==3){
+    }else if(header.bitsPerSample==32 && header.audioFormat==3){
       for(size_t i=0;i<totalSamples;++i){
-        meta.samples[i]=*reinterpret_cast<const float*>(raw + i * 4);
+        metadata.samples[i]=*reinterpret_cast<const float*>(raw + i * 4);
       }
     }
 
     // Amplitude analysis
-    meta.minAmplitude=1.0f;
-    meta.maxAmplitude=-1.0f;
+    metadata.minAmplitude=1.0f;
+    metadata.maxAmplitude=-1.0f;
     double sumSquares=0.0;
-    for(float s:meta.samples){
-      if(s<meta.minAmplitude)meta.minAmplitude=s;
-      if(s>meta.maxAmplitude)meta.maxAmplitude=s;
+    for(float s:metadata.samples){
+      if(s<metadata.minAmplitude)metadata.minAmplitude=s;
+      if(s>metadata.maxAmplitude)metadata.maxAmplitude=s;
       sumSquares += s * s;
     }
-    meta.rmsAmplitude=static_cast<float>(std::sqrt(sumSquares / meta.samples.size()));
-    meta.clippingDetected=(meta.maxAmplitude >= 0.99f || meta.minAmplitude <= -0.99f);
+    metadata.rmsAmplitude=static_cast<float>(std::sqrt(sumSquares / metadata.samples.size()));
+    metadata.clippingDetected=(metadata.maxAmplitude >= 0.99f || metadata.minAmplitude <= -0.99f);
 
     // Duration
-    meta.durationSeconds=static_cast<double>(meta.totalFrames) / meta.sampleRate;
+    metadata.durationSeconds=static_cast<double>(metadata.totalFrames) / metadata.sampleRate;
 
     // No avgFrequency calculation yet (requires FFT)
-    meta.avgFrequency=0.0;
+    metadata.avgFrequency=0.0;
 
     // No compression info (WAV PCM is uncompressed)
-    meta.isVBR=false;
-    meta.bitrateKbps=static_cast<uint32_t>(meta.byteRate * 8 / 1000);
+    metadata.isVBR=false;
+    metadata.bitrateKbps=static_cast<uint32_t>(metadata.byteRate * 8 / 1000);
 
     return true;
   }

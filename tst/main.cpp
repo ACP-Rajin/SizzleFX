@@ -2,7 +2,23 @@
 #include <ncurses.h>
 #include "core/test.cpp"
 
-void print(AudioMetadata metadata){
+void printHeader(WAVHeader &header){
+  std::cout << "WAV Header:\n Chunk ID: ";
+  std::cout.write(header.chunkID,4); std::cout << "\n";
+  std::cout << "  Chunk Size: " << header.chunkSize << "\n Format: ";
+  std::cout.write(header.format,4); std::cout << "\n Subchunk1 ID: ";
+  std::cout.write(header.subchunk1ID,4); std::cout << "\n";
+  std::cout << "  Subchunk1 Size: " << header.subchunk1Size << "\n";
+  std::cout << "  Audio Format: " << header.audioFormat << "\n";
+  std::cout << "  Channels: " << header.numChannels << "\n";
+  std::cout << "  Sample Rate: " << header.sampleRate << "\n";
+  std::cout << "  Byte Rate: " << header.byteRate << "\n";
+  std::cout << "  Block Align: " << header.blockAlign << "\n";
+  std::cout << "  Bits Per Sample: " << header.bitsPerSample << "\n Subchunk2 ID: ";
+  std::cout.write(header.subchunk2ID,4); std::cout << "\n";
+  std::cout << "  Subchunk2 Size: " << header.subchunk2Size << "\n";
+}
+void printMetadata(AudioMetadata metadata){
   std::cout << "Basic Info:\n";
   std::cout << "  File Path: " << metadata.filePath << '\n';
   std::cout << "  Format: " << metadata.format << '\n';
@@ -52,7 +68,9 @@ int main(int argc,char** argv){
 
   Audio audio(argv[1]);
 
-  print(audio.am);
+  printHeader(audio.header);
+  std::cout << std::endl;
+  printMetadata(audio.am);
 
   return 0;
 }

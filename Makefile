@@ -18,13 +18,16 @@ TSTOutputDIR1=bin/sizzlefx.tst1
 
 
 all:
+	mkdir -p bin
 	$(Compiler) $(CompilerFLAGS) $(SRC) -o $(OutputDIR) $(LDFLAGS)
 
 test:
+	mkdir -p bin
 	$(Compiler) $(CompilerFLAGS) $(SRC_TST) -o $(TSTOutputDIR) $(LDFLAGS)
 
 test1:
+	mkdir -p bin
 	$(Compiler) $(CompilerFLAGS) $(SRC_TST1) -o $(TSTOutputDIR1) $(LDFLAGS)
 
 clean:
-	rm -f $(OutputDIR) $(TSTOutputDIR)
+	rm -f $(OutputDIR) $(TSTOutputDIR) $(TSTOutputDIR1)

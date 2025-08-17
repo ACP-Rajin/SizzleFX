@@ -1,3 +1,4 @@
+#include <iostream>
 #include <ncurses.h>
 #include "core/test.cpp"
 
@@ -38,7 +39,6 @@ void printMetadata(Audio &metadata){
   std::cout << "  Average Frequency: " << metadata.avgFrequency << " Hz\n";
 
   std::cout << "Amplitude Analysis:\n";
-  std::cout << "  Min Amplitude: " << metadata.minAmplitude << '\n';
   std::cout << "  Max Amplitude: " << metadata.maxAmplitude << '\n';
   std::cout << "  RMS Amplitude: " << metadata.rmsAmplitude << '\n';
   std::cout << "  Clipping Detected?: " << metadata.clippingDetected << "\n\n";
@@ -70,6 +70,13 @@ int main(int argc,char** argv){
   printHeader(audio.header);
   std::cout << std::endl;
   printMetadata(audio);
+
+  audio.play();
+
+  std::string name;
+  std::cout << "File name: ";
+  std::cin >> name;
+  audio.exportAsWAV(name);
 
   return 0;
 }

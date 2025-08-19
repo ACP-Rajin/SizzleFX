@@ -1,6 +1,12 @@
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstddef>
 #include <iostream>
 #include <ncurses.h>
-#include "core/test.cpp"
+#include <string>
+#include <sstream>
+#include "core/audio.cpp"
 
 void printHeader(WAVHeader &header){
   std::cout << "WAV Header:\n Chunk ID: ";
@@ -59,24 +65,51 @@ void printMetadata(Audio &metadata){
   std::cout << "  Duration: " << metadata.getDuration() << '\n';
 }
 
+std::vector<std::string>split(const std::string& str,char delimiter){
+  std::vector<std::string>tokens;
+  std::stringstream ss(str);
+  std::string word;
+  while(std::getline(ss,word,delimiter))tokens.push_back(word);
+  return tokens;
+} 
+
+void stdInOut(std::string prompt,std::string& var){
+  std::cout << prompt;
+  std::getline(std::cin,var);
+}
+
 int main(int argc,char** argv){
-  if(argc<2){
-    std::cerr<<"Usage: "<<argv[0]<<" <audio_file.wav>\n";
-    return 1;
+  // if(argc<2){
+  //   std::cerr<<"Usage: "<<argv[0]<<" <audio_file.wav>\n";
+  //   return 1;
+  // }
+
+  Audio audio("o.wav");
+
+  std::string command;
+  std::string tmp;
+  while(true){
+    stdInOut("\nEnter Command: ",command);
+    if(command=="exit"){
+      std::cout << "Exiting..." << std::endl;
+      break; 
+    }
+
+    std::vector<std::string>word=split(command,' ');
+    if(!word.empty()){
+      if(word[0]=="clear")system("clear");
+      if(word[0]=="term"){
+        if(word.size()>1)for(int i=1;i<word.size();i++)tmp+=word[i]+' ';
+        system(tmp.c_str());
+        tmp="";
+      }
+
+      if(word[0]=="load")audio.reload(word[1]);
+      if(word[0]=="play")audio.play();
+      if(word[0]=="header")printHeader(audio.header);
+      if(word[0]=="metadata")printMetadata(audio);
+    }
   }
-
-  Audio audio(argv[1]);
-
-  printHeader(audio.header);
-  std::cout << std::endl;
-  printMetadata(audio);
-
-  audio.play();
-
-  std::string name;
-  std::cout << "File name: ";
-  std::cin >> name;
-  audio.exportAsWAV(name);
 
   return 0;
 }

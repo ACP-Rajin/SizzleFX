@@ -8,7 +8,7 @@
 #include <sstream>
 #include "core/audio.cpp"
 
-void printHeader(WAVHeader &header){
+void printHeader(HeaderWAV &header){
   std::cout << "WAV Header:\n Chunk ID: ";
   std::cout.write(header.chunkID,4); std::cout << "\n";
   std::cout << "  Chunk Size: " << header.chunkSize << "\n Format: ";
@@ -78,7 +78,7 @@ void stdInOut(std::string prompt,std::string& var){
   std::getline(std::cin,var);
 }
 
-int main(int argc,char** argv){
+int main(){
   // if(argc<2){
   //   std::cerr<<"Usage: "<<argv[0]<<" <audio_file.wav>\n";
   //   return 1;
@@ -87,7 +87,7 @@ int main(int argc,char** argv){
   Audio audio("o.wav");
 
   std::string command;
-  std::string tmp;
+  std::string tmp,tmpSamples,tmpChannels,tmpSampleRate;
   while(true){
     stdInOut("\nEnter Command: ",command);
     if(command=="exit"){
@@ -99,7 +99,7 @@ int main(int argc,char** argv){
     if(!word.empty()){
       if(word[0]=="clear")system("clear");
       if(word[0]=="term"){
-        if(word.size()>1)for(int i=1;i<word.size();i++)tmp+=word[i]+' ';
+        if(word.size()>1)for(size_t i=1;i<word.size();i++)tmp+=word[i]+' ';
         system(tmp.c_str());
         tmp="";
       }
@@ -111,5 +111,5 @@ int main(int argc,char** argv){
     }
   }
 
-  return 0;
+return 0;
 }

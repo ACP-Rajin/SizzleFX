@@ -43,10 +43,17 @@ class Audio{
 
   HeaderWAV header;// Optional for testing
 
+  Audio(){}
   Audio(std::string path){reload(path);}
+  Audio(std::vector<float>& samples,int channels,int sampleRate){reload(samples,channels,sampleRate);}
 
-  void reload(std::string path){
-    loadWAV(path);
+  void reload(std::string path){loadWAV(path);}
+  void reload(std::vector<float>& samples,int channels,int sampleRate){
+    this->samples=samples;
+    this->numChannels=channels;
+    this->sampleRate=sampleRate;
+    totalFrames=samples.size()/channels;
+    durationSeconds=static_cast<double>(totalFrames)/sampleRate;
   }
 
   void play(){
@@ -63,7 +70,7 @@ class Audio{
     Pa_Terminate();
   }
 
-  static void play(std::vector<float>samples,int channels,int sampleRate){
+  static void play(std::vector<float>& samples,int channels,int sampleRate){
     Pa_Initialize();
 
     PaStream *stream;

@@ -11,7 +11,7 @@ SRC=src/main.cpp\
 OutputDIR=bin/sizzlefx
 
 SRC_TST=tst/main.cpp\
-        tst/core/test.cpp
+        tst/core/audio.cpp
 TSTOutputDIR=bin/sizzlefx.tst
 
 SRC_TST1=tst/wav_creator.cpp

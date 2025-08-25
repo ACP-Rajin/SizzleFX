@@ -7,7 +7,7 @@
 #include <string>
 #include <sstream>
 #include "core/audio.cpp"
-
+/*
 void printHeader(HeaderWAV &header){
   std::cout << "WAV Header:\n Chunk ID: ";
   std::cout.write(header.chunkID,4); std::cout << "\n";
@@ -64,7 +64,7 @@ void printMetadata(Audio &metadata){
   std::cout << "  Samples Per Channel: " << metadata.getSamplesPerChannel() << '\n';
   std::cout << "  Duration: " << metadata.getDuration() << '\n';
 }
-
+*/
 std::vector<std::string>split(const std::string& str,char delimiter){
   std::vector<std::string>tokens;
   std::stringstream ss(str);
@@ -106,10 +106,10 @@ int main(){
 
       if(word[0]=="load")audio.reload(word[1]);
       if(word[0]=="play")audio.play();
-      if(word[0]=="header")printHeader(audio.header);
-      if(word[0]=="metadata")printMetadata(audio);
+      // if(word[0]=="header")printHeader(audio.header);
+      // if(word[0]=="metadata")printMetadata(audio);
     }
   }
 
-return 0;
+  return 0;
 }

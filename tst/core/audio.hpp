@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <cmath>
 #include <portaudio.h>
 
 // File-level metadata

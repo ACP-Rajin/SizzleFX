@@ -1,0 +1,30 @@
++-------------------+------------------+----------------------------+----------------------+
+| Offset (bytes)    | Size (bytes)     | Field                      | Data Type            |
++-------------------+------------------+----------------------------+----------------------+
+| 0x00              | 4                | "RIFF"                     | ASCII string (4 chars)
+| 0x04              | 4                | FileSize - 8               | unsigned 32-bit int  |
+| 0x08              | 4                | "WAVE"                     | ASCII string (4 chars)
++-------------------+------------------+----------------------------+----------------------+
+| 0x0C              | 4                | "fmt "                     | ASCII string (4 chars)
+| 0x10              | 4                | Subchunk1Size              | unsigned 32-bit int  |
+|                   |                  | (16 = PCM, >16 for others) |
+| 0x14              | 2                | AudioFormat                | unsigned 16-bit int  |
+|                   |                  | (1 = PCM, else compressed) |
+| 0x16              | 2                | NumChannels                | unsigned 16-bit int  |
+|                   |                  | (1=Mono, 2=Stereo, etc.)   |
+| 0x18              | 4                | SampleRate                 | unsigned 32-bit int  |
+| 0x1C              | 4                | ByteRate                   | unsigned 32-bit int  |
+|                   |                  | = SampleRate * Channels *  |
+|                   |                  |   BitsPerSample / 8        |
+| 0x20              | 2                | BlockAlign                 | unsigned 16-bit int  |
+|                   |                  | = Channels * BitsPerSample/8|
+| 0x22              | 2                | BitsPerSample              | unsigned 16-bit int  |
+|                   |                  | (8, 16, 24, 32 …)          |
+| 0x24              | (0 or >0)        | ExtraParams (if non-PCM)   | byte array            |
++-------------------+------------------+----------------------------+----------------------+
+| (next offset)     | 4                | "data"                     | ASCII string (4 chars)
+|                   | 4                | Subchunk2Size              | unsigned 32-bit int  |
+|                   | ...              | PCM samples                | signed int samples*  |
++-------------------+------------------+----------------------------+----------------------+
+| (optional chunks) | variable         | LIST, fact, cue, smpl …    | depends on chunk type|
++-------------------+------------------+----------------------------+----------------------+

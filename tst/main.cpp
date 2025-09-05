@@ -1,3 +1,4 @@
+#include <array>
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -85,6 +86,9 @@ int main(){
   // }
 
   Audio audio("o.wav");
+  std::vector<float>samples=audio.audioFile.data.samples;
+  std::cout << "Samples: " << samples.size() << "\nSample Rate: " << audio.audioFile.formatInfo.sampleRate;
+  audio.play(samples,2,audio.audioFile.formatInfo.sampleRate);
 
   std::string command;
   std::string tmp,tmpSamples,tmpChannels,tmpSampleRate;

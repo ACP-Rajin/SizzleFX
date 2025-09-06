@@ -27,22 +27,21 @@ class Audio{
     else throw std::runtime_error("Unsupported audio format: "+extention);
   }
   void reload(std::vector<float>& samples,int channels,int sampleRate){
-    audioFile.data.samples=samples;
-    audioFile.formatInfo.numChannels=channels;
-    audioFile.formatInfo.sampleRate=sampleRate;
-    audioFile.formatInfo.totalFrames=samples.size()/channels;
-    audioFile.formatInfo.totalSamples=samples.size();
-    audioFile.playbackInfo.durationSeconds=static_cast<double>(audioFile.formatInfo.totalFrames)/sampleRate;
+    audioFile.decoded.samples=samples;
+    audioFile.playbackInfo.numChannels=channels;
+    audioFile.playbackInfo.sampleRate=sampleRate;
+    audioFile.decoded.totalFrames=samples.size()/channels;
+    audioFile.playbackInfo.durationSeconds=static_cast<double>(audioFile.decoded.totalFrames)/sampleRate;
   }
 
   void play(){
     Pa_Initialize();
 
     PaStream *stream;
-    Pa_OpenDefaultStream(&stream,0,audioFile.formatInfo.numChannels,paFloat32,audioFile.formatInfo.sampleRate,paFramesPerBufferUnspecified,nullptr,nullptr);
+    Pa_OpenDefaultStream(&stream,0,audioFile.playbackInfo.numChannels,paFloat32,audioFile.playbackInfo.sampleRate,paFramesPerBufferUnspecified,nullptr,nullptr);
 
     Pa_StartStream(stream);
-    Pa_WriteStream(stream,audioFile.data.samples.data(),audioFile.formatInfo.totalFrames);
+    Pa_WriteStream(stream,audioFile.decoded.samples.data(),audioFile.decoded.totalFrames);
     Pa_StopStream(stream);
     Pa_CloseStream(stream);
 
@@ -65,9 +64,9 @@ class Audio{
     Pa_Terminate();
   }
 
-  inline size_t getSampleCount()const{return audioFile.data.samples.size();}
-  inline size_t getSamplesPerChannel()const{return audioFile.formatInfo.numChannels?audioFile.data.samples.size()/audioFile.formatInfo.numChannels:0;}
-  inline double getDuration()const{return audioFile.formatInfo.sampleRate?static_cast<double>(audioFile.formatInfo.totalFrames)/audioFile.formatInfo.sampleRate:0.0;}
+  inline size_t getSampleCount()const{return audioFile.decoded.samples.size();}
+  inline size_t getSamplesPerChannel()const{return audioFile.playbackInfo.numChannels?audioFile.decoded.samples.size()/audioFile.playbackInfo.numChannels:0;}
+  inline double getDuration()const{return audioFile.playbackInfo.sampleRate?static_cast<double>(audioFile.decoded.totalFrames)/audioFile.playbackInfo.sampleRate:0.0;}
 
 private:
   // --- Helper: little-endian integer reader ---

@@ -5,37 +5,38 @@
 #include <fstream>
 #include <cstring>
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 #include <cmath>
 #include <portaudio.h>
 
 // File-level metadata
-struct FileInfo {
+struct FileInfo{
   std::string filePath;
-  std::string format;       // e.g. "wav", "mp3", "ogg"
+  std::string format;       // "wav", "mp3", "ogg", "opus", ...
   uint64_t fileSizeBytes{};
 };
 
-// Audio format / codec info
-enum class SampleType{INT8,INT16,INT24,INT32,FLOAT32,FLOAT64};
-
-struct FormatInfo{
-  uint16_t audioFormatCode{}; // PCM=1, MP3=85, OGG=codec-specific
-  uint16_t numChannels{};     // 1=Mono, 2=Stereo
-  uint32_t sampleRate{};      // e.g. 44100 Hz
-  uint32_t byteRate{};        // bytes/sec
-  uint16_t bitsPerSample{};   // 8, 16, 24, 32
-  uint64_t totalSamples{};    // per channel
-  uint64_t totalFrames{};     // per-channel frames
-  bool littleEndian{true};
-  SampleType sampleType{SampleType::INT16};
+// Playback-level info (unified)
+struct PlaybackInfo{
+  double durationSeconds{};   // total play length totalSamples / sampleRate
+  uint32_t sampleRate{};      // hz (decoded or nominal)
+  uint16_t numChannels{};     // 1=mono, 2=stereo, etc.
 };
 
-// Derived playback info
-struct PlaybackInfo {
-  double durationSeconds{};   // totalSamples / sampleRate
-  double avgFrequency{};      // optional spectral centroid
+// Codec/container-level info
+struct CodecInfo{
+  std::string codecName;      // "PCM", "MP3", "Vorbis", "Opus", etc.
+  uint32_t bitrateKbps{};     // average or nominal
+  bool isVBR{false};          // true if variable bitrate
+  std::map<std::string,std::string>extra; // flexible metadata (frame size, profile, etc.)
+};
+
+// Optional decoded audio (if loaded/decoded to PCM)
+struct DecodedAudio{
+  std::vector<float>samples; // normalized [-1,1], interleaved
+  uint64_t totalFrames{};    // samples per channel
 };
 
 // Signal analysis
@@ -46,35 +47,23 @@ struct Analysis{
   bool clippingDetected{false};
 };
 
-// Compression / bitrate
-struct CompressionInfo{
-  bool isVBR{false};          // Variable Bit Rate
-  uint32_t bitrateKbps{};     // avg bitrate
-};
-
-// Optional tags (ID3/Vorbis)
+// Metadata tags (ID3, Vorbis, OpusTags, etc.)
 struct Tags{
   std::string title;
   std::string artist;
   std::string album;
   std::string year;
-};
-
-// Raw + processed audio data
-struct AudioData{
-  std::vector<float>samples;   // normalized [-1, 1]
-  std::vector<uint8_t>rawData; // original bytes
+  std::map<std::string,std::string>extra;// e.g. "genre", "comment"
 };
 
 // Unified Audio Metadata struct
 struct AudioFile{
   FileInfo fileInfo;
-  FormatInfo formatInfo;
   PlaybackInfo playbackInfo;
-  Analysis analysis;
-  CompressionInfo compression;
+  CodecInfo codecInfo;
   Tags tags;
-  AudioData data;
+  DecodedAudio decoded;
+  Analysis analysis;
 };
 
 #pragma pack(push, 1)

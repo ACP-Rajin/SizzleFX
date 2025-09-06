@@ -1,0 +1,25 @@
++-------------------+------------------+------------------------------+----------------------+
+| Offset (bytes)    | Size (bytes)     | Field                        | Data Type            |
++-------------------+------------------+------------------------------+----------------------+
+| 0x00              | 3                | "ID3" (if ID3v2 present)     | ASCII string         |
+| 0x03              | 2                | Version (major, revision)    | unsigned 8-bit int   |
+| 0x05              | 1                | Flags                        | bit field            |
+| 0x06              | 4                | Tag size (sync-safe int)     | 28-bit int           |
+| 0x0A              | ...              | ID3v2 frames (TIT2, TALB...) | variable, byte array |
++-------------------+------------------+------------------------------+----------------------+
+| (after ID3v2)     | 4                | Frame sync + header          | 32-bit bitfield      |
+|                   |                  | AAAAAAAA AAABBCCD ...        |                      |
+|                   |                  | (see breakdown below)        |                      |
+|                   |                  |                              |                      |
+| (next offset)     | N bytes          | MPEG frame data              | compressed payload   |
++-------------------+------------------+------------------------------+----------------------+
+| ...               | repeats          | Frame header + frame data    | variable per frame   |
++-------------------+------------------+------------------------------+----------------------+
+| (EOF - 128)       | 3                | "TAG" (if ID3v1 present)     | ASCII string         |
+| (EOF - 125)       | 30               | Title                        | ASCII string         |
+| (EOF - 95)        | 30               | Artist                       | ASCII string         |
+| (EOF - 65)        | 30               | Album                        | ASCII string         |
+| (EOF - 35)        | 4                | Year                         | ASCII string         |
+| (EOF - 31)        | 30               | Comment                      | ASCII string         |
+| (EOF - 1)         | 1                | Genre index                  | unsigned 8-bit int   |
++-------------------+------------------+------------------------------+----------------------+

@@ -103,6 +103,11 @@ private:
     uint32_t dataChunkSize=0;
     std::vector<uint8_t>dataBuffer;
 
+    uint16_t numChannels=0;
+    uint32_t sampleRate=0;
+    uint16_t bitsPerSample=0;
+    uint32_t byteRate=0;
+
     while(in && (!foundFmt || !foundData)){
       char chunkId[4];
       if(!in.read(chunkId,4))break;
@@ -111,22 +116,22 @@ private:
       std::string chunk(chunkId,4);
 
       if(chunk == "fmt "){
-        audioFile.formatInfo.audioFormatCode=readLE<uint16_t>(in);
-        audioFile.formatInfo.numChannels    =readLE<uint16_t>(in);
-        audioFile.formatInfo.sampleRate     =readLE<uint32_t>(in);
-        audioFile.formatInfo.byteRate       =readLE<uint32_t>(in);
-        uint16_t blockAlign                 =readLE<uint16_t>(in);
-        audioFile.formatInfo.bitsPerSample  =readLE<uint16_t>(in);
+        uint16_t audioFormatCode=readLE<uint16_t>(in);
+        numChannels             =readLE<uint16_t>(in);
+        sampleRate              =readLE<uint32_t>(in);
+        byteRate                =readLE<uint32_t>(in);
+        uint16_t blockAlign     =readLE<uint16_t>(in);
+        bitsPerSample           =readLE<uint16_t>(in);
 
         // Skip extra params if present
         if(chunkSize>16)in.seekg(chunkSize-16,std::ios::cur);
 
         // Decide sample type
-        switch(audioFile.formatInfo.bitsPerSample){
-          case 8: audioFile.formatInfo.sampleType=SampleType::INT8;  break;
-          case 16:audioFile.formatInfo.sampleType=SampleType::INT16; break;
-          case 24:audioFile.formatInfo.sampleType=SampleType::INT24; break;
-          case 32:audioFile.formatInfo.sampleType=SampleType::INT32; break;
+        switch(bitsPerSample){
+          case 8: break;
+          case 16:break;
+          case 24:break;
+          case 32:break;
           default:return false;//unsupported
         }
 
@@ -145,49 +150,57 @@ private:
     if(!foundFmt || !foundData)return false;
 
     // ---- Fill format info ----
-    uint64_t bytesPerSample=audioFile.formatInfo.bitsPerSample / 8;
-    audioFile.formatInfo.totalFrames = dataChunkSize / (bytesPerSample * audioFile.formatInfo.numChannels);
-    audioFile.formatInfo.totalSamples=audioFile.formatInfo.totalFrames * audioFile.formatInfo.numChannels;
+    uint64_t bytesPerSample=bitsPerSample / 8;
+    uint64_t totalFrames=dataChunkSize / (bytesPerSample * numChannels);
+    // audioFile.formatInfo.totalSamples=audioFile.formatInfo.totalFrames * audioFile.formatInfo.numChannels;
 
-    // ---- Playback info ----
-    audioFile.playbackInfo.durationSeconds=static_cast<double>(audioFile.formatInfo.totalFrames) / audioFile.formatInfo.sampleRate;
+    // ---- Fill playback info ----
+    audioFile.playbackInfo.sampleRate=sampleRate;
+    audioFile.playbackInfo.numChannels=numChannels;
+    audioFile.playbackInfo.durationSeconds=static_cast<double>(totalFrames) / sampleRate;
 
-    // ---- Store raw bytes ----
-    audioFile.data.rawData=std::move(dataBuffer);
+    // ---- Fill codec info ----
+    audioFile.codecInfo.codecName="PCM";
+    audioFile.codecInfo.bitrateKbps=(byteRate * 8) / 1000;
+    audioFile.codecInfo.isVBR=false;
+    audioFile.codecInfo.extra["bitsPerSample"]=std::to_string(bitsPerSample);
+    audioFile.codecInfo.extra["byteRate"]=std::to_string(byteRate);
 
-    // ---- Decode normalized samples ----
-    audioFile.data.samples.reserve(audioFile.formatInfo.totalSamples);
-    const uint8_t* p=audioFile.data.rawData.data();
+    // ---- Store decoded PCM ----
+    audioFile.decoded.totalFrames=totalFrames;
+    audioFile.decoded.samples.reserve(totalFrames * numChannels);
 
-    for(uint64_t i=0;i<audioFile.formatInfo.totalSamples;i++){
+    const uint8_t* p=dataBuffer.data();
+
+    for(uint64_t i=0;i<totalFrames * numChannels;i++){
       float sample=0.0f;
 
-      if(audioFile.formatInfo.bitsPerSample==8){
+      if(bitsPerSample==8){
         int8_t v=static_cast<int8_t>(p[i] - 128);
         sample=static_cast<float>(v) / 128.0f;
-      }else if(audioFile.formatInfo.bitsPerSample==16){
-        int16_t v= *reinterpret_cast<const int16_t*>(p + i*2);
+      }else if(bitsPerSample==16){
+        int16_t v= *reinterpret_cast<const int16_t*>(p + i * 2);
         sample=static_cast<float>(v) / 32768.0f;
-      }else if(audioFile.formatInfo.bitsPerSample==24){
-        int32_t v=(p[i*3] | (p[i*3+1] << 8) | (p[i*3+2] << 16));
+      }else if(bitsPerSample==24){
+        int32_t v=(p[i * 3] | (p[i * 3 + 1] << 8) | (p[i * 3 + 2] << 16));
         if(v & 0x800000)v |= ~0xFFFFFF; // sign extend
         sample=static_cast<float>(v) / 8388608.0f;
-      }else if(audioFile.formatInfo.bitsPerSample==32){
-        int32_t v= *reinterpret_cast<const int32_t*>(p + i*4);
+      }else if(bitsPerSample==32){
+        int32_t v= *reinterpret_cast<const int32_t*>(p + i * 4);
         sample=static_cast<float>(v) / 2147483648.0f;
       }
 
-      audioFile.data.samples.push_back(sample);
+      audioFile.decoded.samples.push_back(sample);
     }
 
     // ---- Simple analysis ----
-    if(!audioFile.data.samples.empty()){
-      audioFile.analysis.minAmplitude= *std::min_element(audioFile.data.samples.begin(),audioFile.data.samples.end());
-      audioFile.analysis.maxAmplitude= *std::max_element(audioFile.data.samples.begin(),audioFile.data.samples.end());
+    if(!audioFile.decoded.samples.empty()){
+      audioFile.analysis.minAmplitude= *std::min_element(audioFile.decoded.samples.begin(),audioFile.decoded.samples.end());
+      audioFile.analysis.maxAmplitude= *std::max_element(audioFile.decoded.samples.begin(),audioFile.decoded.samples.end());
 
       double sumSq=0.0;
-      for(float s : audioFile.data.samples)sumSq += s*s;
-      audioFile.analysis.rmsAmplitude=std::sqrt(sumSq / audioFile.data.samples.size());
+      for(float s : audioFile.decoded.samples)sumSq += s*s;
+      audioFile.analysis.rmsAmplitude=std::sqrt(sumSq / audioFile.decoded.samples.size());
 
       audioFile.analysis.clippingDetected=(audioFile.analysis.maxAmplitude >= 0.999f || audioFile.analysis.minAmplitude <= -0.999f);
     }

@@ -1,295 +1,217 @@
-#include <cassert>
-#include <cstdio>
-#include <iostream>
-#include <fstream>
-#include <cstring>
-#include <cstdint>
-#include <string>
-#include <vector>
-
-struct WAVHeader{
-  char chunkID[4];       // "RIFF"
-  uint32_t chunkSize;
-  char format[4];        // "WAVE"
-  char subchunk1ID[4];   // "fmt "
-  uint32_t subchunk1Size;
-  uint16_t audioFormat;  // 1 = PCM
-  uint16_t numChannels;
-  uint32_t sampleRate;
-  uint32_t byteRate;
-  uint16_t blockAlign;
-  uint16_t bitsPerSample;
-  char subchunk2ID[4];   // "data"
-  uint32_t subchunk2Size;
-};
+#include "audio.hpp"
 
 class Audio{
-public:
-  std::string filePath;
-  std::string format; // e.g.,"wav","mp3","ogg","obb"
-  uint64_t fileSizeBytes;
-  // Audio format info
-  uint16_t audioFormatCode; // PCM=1, MP3=85, OGG=??? (depends on format)
-  uint16_t numChannels;     // Mono=1,Stereo=2
-  uint32_t sampleRate;
-  uint32_t byteRate;        // bytes/sec (sampleRate * channels * bits/8)
-  uint16_t bitsPerSample;   // 8,16,24,32 bits
-  uint64_t totalSamples;    // total frames * channels
-  uint64_t totalFrames;     // per-channel frames
-  bool littleEndian;
-  // Sample type
-  enum class SampleType{INT8,INT16,INT24,INT32,FLOAT32,FLOAT64};
-  SampleType sampleType;
-  // Time & frequency
-  double durationSeconds;
-  double avgFrequency;
-  // Amplitude analysis
-  float minAmplitude;
-  float maxAmplitude;
-  float rmsAmplitude;    // Root Mean Square amplitude
-  bool clippingDetected; // True if > 0.99 amplitude found
-  // Compression / bitrate info
-  bool isVBR;           // Variable Bit Rate
-  uint32_t bitrateKbps; // Average bitrate in kbps
-
-  // Optional tags (ID3/Vorbis Comments)
-  std::string title;
-  std::string artist;
-  std::string album;
-  std::string year;
-
-  // Audio data
-  std::vector<float>samples;   // normalized audio samples [-1, 1]
-  std::vector<uint8_t>rawData; // optional raw file data
-
-  // Helpers
-  inline size_t getSampleCount()const{return samples.size();}
-  inline size_t getSamplesPerChannel()const{return numChannels ? samples.size() / numChannels : 0;}
-  inline double getDuration()const{return sampleRate ? static_cast<double>(totalFrames) / sampleRate : 0.0;}
+  public:
+  AudioFile audioFile;
 
   int SINE_WAVE=0;
   int SQUARE_WAVE=1;
   int SAWTOOTH_WAVE=2;
 
-  WAVHeader header;// Optional for testing
+  Audio(){}
+  Audio(std::string path){reload(path);}
+  Audio(std::vector<float>& samples,int channels,int sampleRate){reload(samples,channels,sampleRate);}
 
-  Audio(std::string path){
-    loadWAV(path);
+  bool reload(const std::string& path){
+    std::string extention=path.substr(path.find_last_of('.')+1);
+    if(extention=="wav"||extention=="wave"||extention=="WAV"||extention=="WAVE")return loadWAV(path);
+    else if(extention=="mp3"||extention=="MP3")return loadMP3(path);
+    else if(extention=="obb"||extention=="OBB")return loadOBB(path);
+    else if(extention=="ogg"||extention=="OGG")return loadOGG(path);
+    else if(extention=="opus"||extention=="OPUS")return loadOPUS(path);
+    else throw std::runtime_error("Unsupported audio format: "+extention);
+  }
+  void reload(std::vector<float>& samples,int channels,int sampleRate){
+    audioFile.decoded.samples=samples;
+    audioFile.playbackInfo.numChannels=channels;
+    audioFile.playbackInfo.sampleRate=sampleRate;
+    audioFile.decoded.totalFrames=samples.size()/channels;
+    audioFile.playbackInfo.durationSeconds=static_cast<double>(audioFile.decoded.totalFrames)/sampleRate;
   }
 
+  void play(){
+    Pa_Initialize();
+
+    PaStream *stream;
+    Pa_OpenDefaultStream(&stream,0,audioFile.playbackInfo.numChannels,paFloat32,audioFile.playbackInfo.sampleRate,paFramesPerBufferUnspecified,nullptr,nullptr);
+
+    Pa_StartStream(stream);
+    Pa_WriteStream(stream,audioFile.decoded.samples.data(),audioFile.decoded.totalFrames);
+    Pa_StopStream(stream);
+    Pa_CloseStream(stream);
+
+    Pa_Terminate();
+  }
+
+  static void play(std::vector<float>& samples,int channels,int sampleRate){
+    Pa_Initialize();
+
+    PaStream *stream;
+    Pa_OpenDefaultStream(&stream,0,channels,paFloat32,sampleRate,paFramesPerBufferUnspecified,nullptr,nullptr);
+
+    size_t totalFrames=samples.size() / channels;
+
+    Pa_StartStream(stream);
+    Pa_WriteStream(stream,samples.data(),totalFrames);
+    Pa_StopStream(stream);
+    Pa_CloseStream(stream);
+
+    Pa_Terminate();
+  }
+
+  inline size_t getSampleCount()const{return audioFile.decoded.samples.size();}
+  inline size_t getSamplesPerChannel()const{return audioFile.playbackInfo.numChannels?audioFile.decoded.samples.size()/audioFile.playbackInfo.numChannels:0;}
+  inline double getDuration()const{return audioFile.playbackInfo.sampleRate?static_cast<double>(audioFile.decoded.totalFrames)/audioFile.playbackInfo.sampleRate:0.0;}
+
 private:
-  bool loadWAV(const std::string& filePath){
-    std::ifstream file(filePath,std::ios::binary);
+  // --- Standalone WAV loader ---
+  bool loadWAV(const std::string &path){
+    audioFile={};//reset all fields
 
-    if(!file){
-      std::cerr << "Error: Could not open file " << filePath << "\n";
-      return false;
-    }
+    audioFile.fileInfo.filePath=path;
+    audioFile.fileInfo.format="wav";
 
-    file.read(reinterpret_cast<char*>(&header),sizeof(WAVHeader));
+    std::ifstream in(path,std::ios::binary | std::ios::ate);
+    if(!in)return false;
 
-    if(!file){
-      std::cerr << "Error: Could not read WAV header\n";
-      return false;
-    }
+    audioFile.fileInfo.fileSizeBytes=in.tellg();
+    in.seekg(0,std::ios::beg);
 
-    // Check header validity
-    if(std::string(header.chunkID,4)!="RIFF"||std::string(header.format,4)!="WAVE"){
-      std::cerr << "Error: Not a valid WAV file\n";
-      return false;
-    }
+    // ---- RIFF header ----
+    char riff[4]; in.read(riff,4);
+    if(std::string(riff,4) != "RIFF")return false;
 
-    // Fill this->basics
-    this->filePath=filePath;
-    this->format=header.format;
-    file.seekg(0,std::ios::end);
-    this->fileSizeBytes=file.tellg();
-    file.seekg(sizeof(WAVHeader),std::ios::beg);
+    uint32_t fileSizeMinus8=readLE<uint32_t>(in);
 
-    this->audioFormatCode=header.audioFormat;
-    this->numChannels=header.numChannels;
-    this->sampleRate=header.sampleRate;
-    this->byteRate=header.byteRate;
-    this->bitsPerSample=header.bitsPerSample;
-    this->littleEndian=true; // WAV is little-endian
+    char wave[4]; in.read(wave,4);
+    if(std::string(wave,4) != "WAVE")return false;
 
-    // Figure out sample type
-    switch(header.bitsPerSample){
-      case 8:  this->sampleType=SampleType::INT8;break;
-      case 16: this->sampleType=SampleType::INT16;break;
-      case 24: this->sampleType=SampleType::INT24;break;
-      case 32: this->sampleType=(header.audioFormat==3)?SampleType::FLOAT32:SampleType::INT32;break;
-      default: std::cerr << "Unsupported bit depth: " << header.bitsPerSample << "\n";
-               return false;
-    }
+    // ---- Read chunks ----
+    bool foundFmt=false,foundData=false;
+    uint32_t dataChunkSize=0;
+    std::vector<uint8_t>dataBuffer;
 
-    // Audio data reading
-    size_t bytesPerSample=header.bitsPerSample/8;
-    size_t totalSamples=header.subchunk2Size/bytesPerSample;
-    this->totalSamples=totalSamples;
-    this->totalFrames=totalSamples/header.numChannels;
+    uint16_t numChannels=0;
+    uint32_t sampleRate=0;
+    uint16_t bitsPerSample=0;
+    uint16_t blockAlign=0;
+    uint32_t byteRate=0;
 
-    // Read raw data
-    this->rawData.resize(header.subchunk2Size);
-    file.read(reinterpret_cast<char*>(this->rawData.data()),header.subchunk2Size);
+    while(in && (!foundFmt || !foundData)){
+      char chunkId[4];
+      if(!in.read(chunkId,4))break;
+      uint32_t chunkSize=readLE<uint32_t>(in);
 
-    if(!file){
-      std::cerr << "Error: Could not read WAV data\n";
-      return false;
-    }
+      std::string chunk(chunkId,4);
 
-    // Convert to normalized float samples [-1, 1]
-    this->samples.resize(totalSamples);
-    const uint8_t* raw=this->rawData.data();
+      if(chunk == "fmt "){
+        uint16_t audioFormatCode=readLE<uint16_t>(in);
+        numChannels             =readLE<uint16_t>(in);
+        sampleRate              =readLE<uint32_t>(in);
+        byteRate                =readLE<uint32_t>(in);
+        blockAlign              =readLE<uint16_t>(in);
+        bitsPerSample           =readLE<uint16_t>(in);
 
-    if (header.bitsPerSample==8){
-      for(size_t i=0;i<totalSamples;++i)this->samples[i]=(static_cast<int>(raw[i])-128)/128.0f;
-    }else if(header.bitsPerSample==16){
-      for(size_t i=0;i<totalSamples;++i){
-        int16_t sample=*reinterpret_cast<const int16_t*>(raw + i * 2);
-        this->samples[i]=sample/32768.0f;
-      }
-    }else if(header.bitsPerSample==24){
-      for(size_t i=0;i<totalSamples;++i){
-        int32_t sample=(raw[i*3+2]<<24)|(raw[i*3+1]<<16)|(raw[i*3]<<8);
-        sample >>= 8;
-        this->samples[i]=sample/8388608.0f;
-      }
-    }else if(header.bitsPerSample==32 && header.audioFormat==1){
-      for(size_t i=0;i<totalSamples;++i){
-        int32_t sample= *reinterpret_cast<const int32_t*>(raw + i * 4);
-        this->samples[i]=sample / 2147483648.0f;
-      }
-    }else if(header.bitsPerSample==32 && header.audioFormat==3){
-      for(size_t i=0;i<totalSamples;++i){
-        this->samples[i]=*reinterpret_cast<const float*>(raw + i * 4);
+        // Skip extra params if present
+        if(chunkSize>16)in.seekg(chunkSize-16,std::ios::cur);
+
+        // Decide sample type
+        switch(bitsPerSample){
+          case 8: break;
+          case 16:break;
+          case 24:break;
+          case 32:break;
+          default:return false;//unsupported
+        }
+
+        foundFmt=true;
+      }else if(chunk=="data"){
+        dataChunkSize=chunkSize;
+        dataBuffer.resize(chunkSize);
+        in.read(reinterpret_cast<char*>(dataBuffer.data()),chunkSize);
+        foundData=true;
+      }else{
+        // Skip irrelevant chunks
+        in.seekg(chunkSize,std::ios::cur);
       }
     }
 
-    // Amplitude analysis
-    this->minAmplitude=1.0f;
-    this->maxAmplitude=-1.0f;
-    double sumSquares=0.0;
-    for(float s:this->samples){
-      if(s<this->minAmplitude)this->minAmplitude=s;
-      if(s>this->maxAmplitude)this->maxAmplitude=s;
-      sumSquares += s * s;
+    if(!foundFmt || !foundData)return false;
+
+    // ---- Fill format info ----
+    uint64_t bytesPerSample=bitsPerSample / 8;
+    uint64_t totalFrames=dataChunkSize / (bytesPerSample * numChannels);
+    // audioFile.formatInfo.totalSamples=audioFile.formatInfo.totalFrames * audioFile.formatInfo.numChannels;
+
+    // ---- Fill playback info ----
+    audioFile.playbackInfo.sampleRate=sampleRate;
+    audioFile.playbackInfo.numChannels=numChannels;
+    audioFile.playbackInfo.durationSeconds=static_cast<double>(totalFrames) / sampleRate;
+
+    // ---- Fill codec info ----
+    audioFile.codecInfo.codecName="PCM";
+    audioFile.codecInfo.bitrateKbps=(byteRate * 8) / 1000;
+    audioFile.codecInfo.isVBR=false;
+    audioFile.codecInfo.extra["bitsPerSample"]=std::to_string(bitsPerSample);
+    audioFile.codecInfo.extra["blockAlign"]=std::to_string(blockAlign);
+    audioFile.codecInfo.extra["byteRate"]=std::to_string(byteRate);
+
+    // ---- Store decoded PCM ----
+    audioFile.decoded.totalFrames=totalFrames;
+    audioFile.decoded.samples.reserve(totalFrames * numChannels);
+
+    const uint8_t* p=dataBuffer.data();
+
+    for(uint64_t i=0;i<totalFrames * numChannels;i++){
+      float sample=0.0f;
+
+      if(bitsPerSample==8){
+        int8_t v=static_cast<int8_t>(p[i] - 128);
+        sample=static_cast<float>(v) / 128.0f;
+      }else if(bitsPerSample==16){
+        int16_t v= *reinterpret_cast<const int16_t*>(p + i * 2);
+        sample=static_cast<float>(v) / 32768.0f;
+      }else if(bitsPerSample==24){
+        int32_t v=(p[i * 3] | (p[i * 3 + 1] << 8) | (p[i * 3 + 2] << 16));
+        if(v & 0x800000)v |= ~0xFFFFFF; // sign extend
+        sample=static_cast<float>(v) / 8388608.0f;
+      }else if(bitsPerSample==32){
+        int32_t v= *reinterpret_cast<const int32_t*>(p + i * 4);
+        sample=static_cast<float>(v) / 2147483648.0f;
+      }
+
+      audioFile.decoded.samples.push_back(sample);
     }
-    this->rmsAmplitude=static_cast<float>(std::sqrt(sumSquares / this->samples.size()));
-    this->clippingDetected=(this->maxAmplitude >= 0.99f || this->minAmplitude <= -0.99f);
 
-    // Duration
-    this->durationSeconds=static_cast<double>(this->totalFrames) / this->sampleRate;
+    // ---- Simple analysis ----
+    if(!audioFile.decoded.samples.empty()){
+      audioFile.analysis.minAmplitude= *std::min_element(audioFile.decoded.samples.begin(),audioFile.decoded.samples.end());
+      audioFile.analysis.maxAmplitude= *std::max_element(audioFile.decoded.samples.begin(),audioFile.decoded.samples.end());
 
-    // No avgFrequency calculation yet (requires FFT)
-    this->avgFrequency=0.0;
+      double sumSq=0.0;
+      for(float s : audioFile.decoded.samples)sumSq += s*s;
+      audioFile.analysis.rmsAmplitude=std::sqrt(sumSq / audioFile.decoded.samples.size());
 
-    // No compression info (WAV PCM is uncompressed)
-    this->isVBR=false;
-    this->bitrateKbps=static_cast<uint32_t>(this->byteRate * 8 / 1000);
+      audioFile.analysis.clippingDetected=(audioFile.analysis.maxAmplitude >= 0.999f || audioFile.analysis.minAmplitude <= -0.999f);
+    }
 
     return true;
   }
-};
 
-// class Audio{
-// public:
-//   std::string filePath;
-//   std::string fileFormat;
-//
-//   uint32_t sampleRate=0;
-//   uint16_t bitDepth=0;
-//   uint16_t channels=0;
-//   uint64_t totalSamples=0;
-//   float durationSeconds=0.0f;
-//
-//   float minAmplitude=0.0f;
-//   float maxAmplitude=0.0f;
-//   float averageAmplitude=0.0f;
-//   float rmsAmplitude=0.0f;
-//
-//   uint32_t bitrate=0;
-//   uint64_t fileSizeBytes=0;
-//   uint64_t dataChunkSize=0;
-//
-//   std::vector<float>frequencySpectrum;
-//
-//   bool isCompressed=false;
-//   bool isValid=false;
-//
-//   int SINE_WAVE=0;
-//   int SQUARE_WAVE=1;
-//   int SAWTOOTH_WAVE=2;
-//
-//   Audio(std::string path){
-//     parseWAV();
-//   }
-//
-// private:
-//   void parseWAV(){
-//     std::ifstream file(filePath,std::ios::binary);
-//     if(!file){
-//       std::cerr<<"Error: Could not open file "<<filePath<<"\n";
-//       return;
-//     }
-//
-//     // Get file size
-//     file.seekg(0,std::ios::end);
-//     fileSizeBytes=file.tellg();
-//     file.seekg(0,std::ios::beg);
-//
-//     // Read header
-//     char riff[4];
-//     file.read(riff,4);
-//     if(std::strncmp(riff,"RIFF",4)!=0){
-//       std::cerr<<"Error: Not a valid RIFF file.\n";
-//       return;
-//     }
-//
-//     file.seekg(8,std::ios::beg);//Skip RIFF size
-//     char wave[4];
-//     file.read(wave,4);
-//     if(std::strncmp(wave,"WAVE",4)!=0){
-//       std::cerr<<"Error: Not a valid WAVE file.\n";
-//       return;
-//     }
-//
-//     //Read chunks until we find "fmt "
-//     char chunkId[4];
-//     uint32_t chunkSize;
-//     while(file.read(chunkId,4)){
-//       file.read(reinterpret_cast<char*>(&chunkSize),4);
-//
-//       if(std::strncmp(chunkId,"fmt ",4)==0){
-//         uint16_t audioFormat;
-//         file.read(reinterpret_cast<char*>(&audioFormat),2);
-//         file.read(reinterpret_cast<char*>(&channels),2);
-//         file.read(reinterpret_cast<char*>(&sampleRate),4);
-//
-//         uint32_t byteRate;
-//         file.read(reinterpret_cast<char*>(&byteRate),4);
-//
-//         uint16_t blockAlign;
-//         file.read(reinterpret_cast<char*>(&blockAlign),2);
-//         file.read(reinterpret_cast<char*>(&bitDepth),2);
-//
-//         isCompressed=(audioFormat!=1);//PCM=1
-//
-//         file.seekg(chunkSize-16,std::ios::cur);//skip extra fmt data
-//       }else if(std::strncmp(chunkId,"data",4)==0){
-//         dataChunkSize=chunkSize;
-//         break;
-//       }else{
-//         file.seekg(chunkSize,std::ios::cur);
-//       }
-//     }
-//
-//     // Calculate derived values
-//     totalSamples=dataChunkSize / (bitDepth / 8);
-//     durationSeconds=(float)totalSamples / (sampleRate * channels);
-//     bitrate=sampleRate * channels * bitDepth;
-//
-//     isValid=true;
-//     fileFormat="wav";
-//   }
-// };
+  bool loadMP3(const std::string& path){
+    std::cout << "I am MP3 at" << path << "\n";
+    return true;
+  }
+  bool loadOBB(const std::string& path){
+    std::cout << "I am OBB at" << path << "\n";
+    return true;
+  }
+  bool loadOGG(const std::string& path){
+    std::cout << "I am OGG at" << path << "\n";
+    return true;
+  }
+  bool loadOPUS(const std::string& path){
+    std::cout << "I am OPUS at" << path << "\n";
+    return true;
+  }
+};

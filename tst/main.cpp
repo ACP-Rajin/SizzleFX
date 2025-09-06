@@ -85,10 +85,7 @@ int main(){
   //   return 1;
   // }
 
-  Audio audio("output.wav");
-  std::vector<float>samples=audio.audioFile.decoded.samples;
-  std::cout << "Samples: " << samples.size() << "\nSample Rate: " << audio.audioFile.playbackInfo.sampleRate;
-  audio.play(samples,2,audio.audioFile.playbackInfo.sampleRate);
+  Audio audio("samples/output.wav");
 
   std::string command;
   std::string tmp,tmpSamples,tmpChannels,tmpSampleRate;
@@ -109,7 +106,11 @@ int main(){
       }
 
       if(word[0]=="load")audio.reload(word[1]);
-      if(word[0]=="play")audio.play();
+      if(word[0]=="play"){
+        audio.play();
+        std::vector<float>samples=audio.audioFile.decoded.samples;
+        std::cout << "Samples: " << samples.size() << "\nSample Rate: " << audio.audioFile.playbackInfo.sampleRate << "\n";
+      }
       // if(word[0]=="header")printHeader(audio.header);
       // if(word[0]=="metadata")printMetadata(audio);
     }

@@ -6,7 +6,6 @@ LDFLAGS=-lncurses -lsndfile -lportaudio
 # File Stuff
 SRC=src/main.cpp\
 		src/ui/screen.cpp\
-		src/core/audio_engine.cpp\
 		src/core/audio.cpp
 OutputDIR=bin/sizzlefx
 

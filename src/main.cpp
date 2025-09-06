@@ -5,7 +5,6 @@
 
 #include "ui/screen.hpp"
 #include "core/audio.cpp"
-#include "core/audio_engine.hpp"
 
 int main(int argc,char** argv){
   using namespace SizzleFX;
@@ -17,7 +16,7 @@ int main(int argc,char** argv){
 
   Audio audio(argv[1]);
 
-  const auto& samples=audio.samples;
+  const auto& samples=audio.audioFile.decoded.samples;
 
   UI::initUI();
   bool running=true;
@@ -52,10 +51,10 @@ int mmain(int argc,char** argv){
     return 1;
   }
 
-  Core::AudioEngine engine;
-  if(!engine.loadWAV(argv[1]))return 1;
+  Audio audio;
+  if(!audio.reload(argv[1]))return 1;
 
-  const auto& samples=engine.getSamples();
+  const auto& samples=audio.audioFile.decoded.samples;
 
   UI::initUI();
   bool running=true;

@@ -8,22 +8,17 @@ class Audio{
   int SQUARE_WAVE=1;
   int SAWTOOTH_WAVE=2;
 
-  HeaderWAV header;// Optional for testing
-
   Audio(){}
   Audio(std::string path){reload(path);}
   Audio(std::vector<float>& samples,int channels,int sampleRate){reload(samples,channels,sampleRate);}
 
-  void reload(const std::string& path){
+  bool reload(const std::string& path){
     std::string extention=path.substr(path.find_last_of('.')+1);
-    if(extention=="wav"||extention=="wave"||extention=="WAV"||extention=="WAVE")
-      loadWAV(path);
-    else if(extention=="mp3"||extention=="MP3")
-      loadMP3(path);
-    else if(extention=="obb"||extention=="OBB")
-      loadOBB(path);
-    else if(extention=="opus"||extention=="OPUS")
-      loadOPUS(path);
+    if(extention=="wav"||extention=="wave"||extention=="WAV"||extention=="WAVE")return loadWAV(path);
+    else if(extention=="mp3"||extention=="MP3")return loadMP3(path);
+    else if(extention=="obb"||extention=="OBB")return loadOBB(path);
+    else if(extention=="ogg"||extention=="OGG")return loadOGG(path);
+    else if(extention=="opus"||extention=="OPUS")return loadOPUS(path);
     else throw std::runtime_error("Unsupported audio format: "+extention);
   }
   void reload(std::vector<float>& samples,int channels,int sampleRate){
@@ -69,13 +64,6 @@ class Audio{
   inline double getDuration()const{return audioFile.playbackInfo.sampleRate?static_cast<double>(audioFile.decoded.totalFrames)/audioFile.playbackInfo.sampleRate:0.0;}
 
 private:
-  // --- Helper: little-endian integer reader ---
-  template<typename T> T readLE(std::ifstream &in){
-    T value{};
-    in.read(reinterpret_cast<char*>(&value),sizeof(T));
-    return value;
-  }
-
   // --- Standalone WAV loader ---
   bool loadWAV(const std::string &path){
     audioFile={};//reset all fields
@@ -106,6 +94,7 @@ private:
     uint16_t numChannels=0;
     uint32_t sampleRate=0;
     uint16_t bitsPerSample=0;
+    uint16_t blockAlign=0;
     uint32_t byteRate=0;
 
     while(in && (!foundFmt || !foundData)){
@@ -120,7 +109,7 @@ private:
         numChannels             =readLE<uint16_t>(in);
         sampleRate              =readLE<uint32_t>(in);
         byteRate                =readLE<uint32_t>(in);
-        uint16_t blockAlign     =readLE<uint16_t>(in);
+        blockAlign              =readLE<uint16_t>(in);
         bitsPerSample           =readLE<uint16_t>(in);
 
         // Skip extra params if present
@@ -164,6 +153,7 @@ private:
     audioFile.codecInfo.bitrateKbps=(byteRate * 8) / 1000;
     audioFile.codecInfo.isVBR=false;
     audioFile.codecInfo.extra["bitsPerSample"]=std::to_string(bitsPerSample);
+    audioFile.codecInfo.extra["blockAlign"]=std::to_string(blockAlign);
     audioFile.codecInfo.extra["byteRate"]=std::to_string(byteRate);
 
     // ---- Store decoded PCM ----
@@ -207,16 +197,21 @@ private:
 
     return true;
   }
+
   bool loadMP3(const std::string& path){
-    std::cout << "I am MP3\n";
+    std::cout << "I am MP3 at" << path << "\n";
     return true;
   }
   bool loadOBB(const std::string& path){
-    std::cout << "I am OBB\n";
+    std::cout << "I am OBB at" << path << "\n";
+    return true;
+  }
+  bool loadOGG(const std::string& path){
+    std::cout << "I am OGG at" << path << "\n";
     return true;
   }
   bool loadOPUS(const std::string& path){
-    std::cout << "I am OPUS\n";
+    std::cout << "I am OPUS at" << path << "\n";
     return true;
   }
 };

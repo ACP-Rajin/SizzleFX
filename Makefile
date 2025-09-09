@@ -4,13 +4,10 @@ C++Version=17
 CompilerFLAGS=-Wall -Wextra -std=c++$(C++Version)
 LDFLAGS=-lncurses -lsndfile -lportaudio
 # File Stuff
-SRC=src/main.cpp\
-		src/ui/screen.cpp\
-		src/core/audio.cpp
+SRC=src/main.cpp
 OutputDIR=bin/sizzlefx
 
-SRC_TST=tst/main.cpp\
-        tst/core/audio.cpp
+SRC_TST=tst/main.cpp
 TSTOutputDIR=bin/sizzlefx.tst
 
 SRC_TST1=tst/wav_creator.cpp

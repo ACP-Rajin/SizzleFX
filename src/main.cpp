@@ -1,12 +1,6 @@
-#include <locale.h>
-
-// #include "ui/screen.cpp"
-// #include "core/audio.cpp"
-
-#include "ui/screen.hpp"
-#include "core/audio.hpp"
-
+#include "header.hpp"
 // JetBrainsMono Nerd Font ASCII art banner
+
 std::vector<std::string>banner={
 };
 
@@ -177,5 +171,4 @@ int main(int argc,char** argv){
   UI::shutdownUI();
 
   return 0;
-};
-*/
+};*/

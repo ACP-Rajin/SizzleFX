@@ -1,6 +1,9 @@
 #include "header.hpp"
-// JetBrainsMono Nerd Font ASCII art banner
+#include <functional>
+#include <ncurses.h>
 
+// JetBrainsMono Nerd Font ASCII art banner
+/*
 std::vector<std::string>banner={
 };
 
@@ -126,6 +129,47 @@ int main(){
     int ch=getch();
     if(ch=='q'||ch=='Q')running=false;
   }
+  endwin();
+  return 0;
+}
+*/
+int main(){
+  initscr();
+  start_color();
+  use_default_colors();
+  noecho();
+  cbreak();
+  curs_set(0);
+  keypad(stdscr, TRUE);
+
+  int height, width;
+  getmaxyx(stdscr, height, width);
+  WINDOW *menuwin = newwin(height, width, 0, 0);
+  keypad(menuwin, TRUE);
+
+  bool running = true;
+  while (running) {
+    werase(menuwin);
+
+    Rectangle rect1({2,2}, {15,6}, {255,0,0},
+        Rectangle::FillStyle::NONE,
+        Rectangle::ColorMode::BASIC);
+
+    Rectangle rect2({20,2}, {15,6}, {120,200,255},
+        Rectangle::FillStyle::REVERSE,
+        Rectangle::ColorMode::EXTENDED);
+
+    rect1.draw(menuwin);
+    rect2.draw(menuwin);
+
+    // ✅ single refresh after all widgets
+    wrefresh(menuwin);
+
+    int ch = getch();
+    if (ch == 'q' || ch == 'Q') running = false;
+  }
+
+  delwin(menuwin);
   endwin();
   return 0;
 }

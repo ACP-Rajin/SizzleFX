@@ -1,87 +1,84 @@
 #include "header.hpp"
-#include <functional>
-#include <ncurses.h>
 
-// JetBrainsMono Nerd Font ASCII art banner
 /*
-std::vector<std::string>banner={
-};
+void drawBanner(WINDOW* win,const std::vector<std::string>& banner){
+  int height,width;
+  getmaxyx(win,height,width);
 
-// Draw one button
-void drawButton(WINDOW *menuwin,int y,int x,const std::string &text,bool highlighted){
-  std::string padded=" "+text+" ";
-  int btn_width=padded.size();
+  for(size_t i=0;i<banner.size();i++){
+    int row=(height-(int)banner.size())/2+i;
+    int col=(width-(int)banner[i].length())/2;
 
-  // Corners change based on highlight
-  const char *top_left,*top_right,*bottom_left,*bottom_right,*horizontal,*vertical;
-  if(highlighted){
-    top_left   ="┌";top_right   ="┐";
-    bottom_left="└";bottom_right="┘";
-  }else{
-    top_left   ="╭";top_right   ="╮";
-    bottom_left="╰";bottom_right="╯";
+    // Clip if the terminal is too narrow
+    if(col<0)col=0;
+    if(row>=0 && row<height){
+      mvwprintw(win,row,col,"%s",banner[i].c_str());
+    }
   }
-  horizontal="─";
-  vertical="│";
+}
+const std::vector<std::string>& selectBanner(int width){
+  // fallback if too small for even bannerSmall
+  if(width<(int)bannerSmall[0].length())
+    return bannerSmall;
 
-  // Top border
-  mvwprintw(menuwin,y,x,"%s",top_left);
-  for(int i=0;i<btn_width;i++)mvwprintw(menuwin,y,x+1+i,"%s",horizontal);
-  mvwprintw(menuwin,y,x+btn_width+1,"%s",top_right);
+  // use big banner if terminal is wide enough
+  if(width>=(int)bannerBig[0].length())
+    return bannerBig;
 
-  // Middle row
-  mvwprintw(menuwin,y+1,x,"%s",vertical);
-  if(highlighted)wattron(menuwin,A_REVERSE);
-  mvwprintw(menuwin,y+1,x+1,"%s",padded.c_str());  // only text row inverts
-  if(highlighted)wattroff(menuwin,A_REVERSE);
-  mvwprintw(menuwin,y+1,x+btn_width+1,"%s",vertical);
-
-  // Bottom border
-  mvwprintw(menuwin,y+2,x,"%s",bottom_left);
-  for(int i=0;i<btn_width;i++)mvwprintw(menuwin,y+2,x+1+i,"%s",horizontal);
-  mvwprintw(menuwin,y+2,x+btn_width+1,"%s",bottom_right);
+  // otherwise small
+  return bannerSmall;
 }
 
-// Function to display the menu
-int mainMenu(WINDOW *menuwin,const std::vector<std::string> &options){
+int main(){
+  setlocale(LC_ALL,"");
+  initscr();
+  start_color();
+  use_default_colors();
+  noecho();
+  cbreak();
+  curs_set(0);
+  keypad(stdscr,TRUE);
+
+  std::vector<std::string>options={
+    "New",
+    "Import",
+    "Settings",
+    "Exit"
+  };
+
   int highlight=0;
-  int choice=0;
-  int input;
 
-  int spacing=2;
-  int banner_height=banner.size();
+  bool running=true;
+  while(running){
+    werase(stdscr);
 
-  while(true){
-    werase(menuwin);
+    int height,width;
+    getmaxyx(stdscr,height,width);
 
-    int win_height,win_width;
-    getmaxyx(menuwin,win_height,win_width);
-    box(menuwin,0,0);
+    // Calculate vertical positioning
+    int btn_height=3;
+    int btn_width=20;
+    int spacing=2;
+    int total_height=(int)options.size() * (btn_height+spacing);
+    int start_y=(height-total_height)/2;
 
-    // Draw banner below top border
-    for(size_t i=0;i<banner.size();i++){
-      int banner_x=(win_width-(int)banner[i].size())/2;
-      mvwprintw(menuwin,2+i,banner_x,"%s",banner[i].c_str());
-    }
-
-    // Calculate vertical start for buttons
-    int total_height=(int)options.size()*3+(int)options.size()*spacing;
-    int start_y=(win_height-total_height)/2+banner_height;
-
-    // Draw buttons
+    std::vector<Button>buttons;
     for(size_t i=0;i<options.size();i++){
-      std::string padded=" "+options[i]+" ";
-      int btn_width=padded.size();
-      int x=(win_width-(btn_width+2))/2;
-      int y=start_y+i * (3+spacing);
-
-      drawButton(menuwin,y,x,options[i],(int)i==highlight);
+      int x=(width-btn_width)/2;
+      int y=start_y+i * (btn_height+spacing);
+      buttons.emplace_back(g3dl_math::Vector2i(x,y),g3dl_math::Vector2i(btn_width,btn_height),options[i]);
     }
 
-    wrefresh(menuwin);
+    // Set highlight
+    for(size_t i=0;i<buttons.size();i++){
+      buttons[i].setIsHighlight((int)i==highlight);
+      buttons[i].draw(stdscr);
+    }
 
-    input=wgetch(menuwin);
-    switch(input){
+    wrefresh(stdscr);
+
+    int ch=getch();
+    switch(ch){
       case KEY_UP:
         highlight--;
         if(highlight<0)highlight=options.size()-1;
@@ -91,48 +88,26 @@ int mainMenu(WINDOW *menuwin,const std::vector<std::string> &options){
         if(highlight>=(int)options.size())highlight=0;
         break;
       case 10: // Enter
-        choice=highlight;
-        return choice;
+        if(options[highlight]=="Exit"){
+          running=false;
+        }else{
+          clear();
+          mvprintw(height/2,(width-(int)options[highlight].size()-14)/2,"You selected: %s",options[highlight].c_str());
+          refresh();
+          getch();
+        }
+        break;
+      case 'q':case 'Q':
+        running=false;
+        break;
     }
   }
-}
 
-int main(){
-  setlocale(LC_ALL,""); // important for Unicode glyphs
-  initscr();
-  noecho();
-  cbreak();
-  curs_set(0);
-  keypad(stdscr,TRUE);
-
-  bool running=true;
-  while(running){
-    // Full screen window
-    int height,width;
-    getmaxyx(stdscr,height,width);
-    WINDOW *menuwin=newwin(height,width,0,0);
-    keypad(menuwin,TRUE);
-
-    std::vector<std::string>options={
-      "Create New",
-      "Import Existing",
-      "Options",
-      "Exit"
-    };
-
-    int choice=mainMenu(menuwin,options);
-
-    clear();
-    mvprintw(height/2,((width-(options[choice].length()+14))/2),"You selected: %s",options[choice].c_str());
-    refresh();
-
-    int ch=getch();
-    if(ch=='q'||ch=='Q')running=false;
-  }
   endwin();
   return 0;
 }
 */
+/* BASIC RECTANGLE MOVEMENT*/
 int main(){
   initscr();
   start_color();
@@ -140,40 +115,127 @@ int main(){
   noecho();
   cbreak();
   curs_set(0);
-  keypad(stdscr, TRUE);
+  keypad(stdscr,TRUE);
 
-  int height, width;
-  getmaxyx(stdscr, height, width);
-  WINDOW *menuwin = newwin(height, width, 0, 0);
-  keypad(menuwin, TRUE);
+  int height,width;
+  getmaxyx(stdscr,height,width);
+  WINDOW *menuwin=newwin(height,width,0,0);
+  keypad(menuwin,TRUE);
 
-  bool running = true;
-  while (running) {
+  // --- Create your widgets ---
+  // Rectangle rect1({2,2},{15,6},{255,0,0},Rectangle::FillStyle::NONE,Rectangle::ColorMode::BASIC);
+  // Rectangle rect2({20,2},{15,6},{120,200,255},Rectangle::FillStyle::REVERSE,Rectangle::ColorMode::EXTENDED);
+
+  Rectangle rect1({2,2},{15,6},Rectangle::ColorMode::BASIC),
+            rect2({20,2},{15,6},Rectangle::ColorMode::EXTENDED),
+            rect3({38,2},{15,6},Rectangle::ColorMode::EXTENDED),
+            rect4({56,2},{15,6},Rectangle::ColorMode::EXTENDED);
+
+  Rectangle rect5({2,9},{15,6},Rectangle::ColorMode::EXTENDED),
+            rect6({20,9},{15,6},Rectangle::ColorMode::EXTENDED),
+            rect7({38,9},{15,6},Rectangle::ColorMode::EXTENDED),
+            rect8({56,9},{15,6},Rectangle::ColorMode::EXTENDED);
+
+  rect1.setForegroundColor(255,0,0);
+  rect2.setForegroundColor(0,255,0);
+  rect3.setForegroundColor(0,0,255);
+
+  rect5.setForegroundColor(167,55,76);
+  rect6.setForegroundColor(90,0,101);
+  rect7.setForegroundColor(200,100,110);
+  rect8.setForegroundColor(166,255,78);
+
+  rect2.setFillCharacter("g");
+  rect3.setFillCharacter("&");
+  rect4.setFillCharacter("\\");
+
+  rect6.setFillCharacter("g");
+  rect7.setFillCharacter("&");
+  rect8.setFillCharacter("\\");
+
+  rect5.setHasBorder(true);
+  rect6.setHasBorder(true);
+  rect7.setHasBorder(true);
+  rect8.setHasBorder(true);
+
+  bool running=true;
+  while(running){
     werase(menuwin);
-
-    Rectangle rect1({2,2}, {15,6}, {255,0,0},
-        Rectangle::FillStyle::NONE,
-        Rectangle::ColorMode::BASIC);
-
-    Rectangle rect2({20,2}, {15,6}, {120,200,255},
-        Rectangle::FillStyle::REVERSE,
-        Rectangle::ColorMode::EXTENDED);
 
     rect1.draw(menuwin);
     rect2.draw(menuwin);
+    rect3.draw(menuwin);
+    rect4.draw(menuwin);
 
-    // ✅ single refresh after all widgets
+    rect5.draw(menuwin);
+    rect6.draw(menuwin);
+    rect7.draw(menuwin);
+    rect8.draw(menuwin);
+
     wrefresh(menuwin);
 
-    int ch = getch();
-    if (ch == 'q' || ch == 'Q') running = false;
+    int ch=wgetch(menuwin);  // blocking wait for input
+    switch(ch){
+      case 'q':case'Q':
+        running=false;
+        break;
+      case KEY_RESIZE:{
+        getmaxyx(stdscr,height,width);
+        wresize(menuwin,height,width);
+        mvwin(menuwin,0,0);
+      }break;// later: handle highlights, navigation, etc.
+      case KEY_UP:
+        rect1.setPosition(rect1.getPosition().x,rect1.getPosition().y-1);
+        rect2.setPosition(rect2.getPosition().x,rect2.getPosition().y-1);
+        rect3.setPosition(rect3.getPosition().x,rect3.getPosition().y-1);
+        rect4.setPosition(rect4.getPosition().x,rect4.getPosition().y-1);
+
+        rect5.setPosition(rect5.getPosition().x,rect5.getPosition().y-1);
+        rect6.setPosition(rect6.getPosition().x,rect6.getPosition().y-1);
+        rect7.setPosition(rect7.getPosition().x,rect7.getPosition().y-1);
+        rect8.setPosition(rect8.getPosition().x,rect8.getPosition().y-1);
+        break;
+      case KEY_LEFT:
+        rect1.setPosition(rect1.getPosition().x-2,rect1.getPosition().y);
+        rect2.setPosition(rect2.getPosition().x-2,rect2.getPosition().y);
+        rect3.setPosition(rect3.getPosition().x-2,rect3.getPosition().y);
+        rect4.setPosition(rect4.getPosition().x-2,rect4.getPosition().y);
+
+        rect5.setPosition(rect5.getPosition().x-2,rect5.getPosition().y);
+        rect6.setPosition(rect6.getPosition().x-2,rect6.getPosition().y);
+        rect7.setPosition(rect7.getPosition().x-2,rect7.getPosition().y);
+        rect8.setPosition(rect8.getPosition().x-2,rect8.getPosition().y);
+        break;
+      case KEY_DOWN:
+        rect1.setPosition(rect1.getPosition().x,rect1.getPosition().y+1);
+        rect2.setPosition(rect2.getPosition().x,rect2.getPosition().y+1);
+        rect3.setPosition(rect3.getPosition().x,rect3.getPosition().y+1);
+        rect4.setPosition(rect4.getPosition().x,rect4.getPosition().y+1);
+
+        rect5.setPosition(rect5.getPosition().x,rect5.getPosition().y+1);
+        rect6.setPosition(rect6.getPosition().x,rect6.getPosition().y+1);
+        rect7.setPosition(rect7.getPosition().x,rect7.getPosition().y+1);
+        rect8.setPosition(rect8.getPosition().x,rect8.getPosition().y+1);
+        break;
+      case KEY_RIGHT:
+        rect1.setPosition(rect1.getPosition().x+2,rect1.getPosition().y);
+        rect2.setPosition(rect2.getPosition().x+2,rect2.getPosition().y);
+        rect3.setPosition(rect3.getPosition().x+2,rect3.getPosition().y);
+        rect4.setPosition(rect4.getPosition().x+2,rect4.getPosition().y);
+
+        rect5.setPosition(rect5.getPosition().x+2,rect5.getPosition().y);
+        rect6.setPosition(rect6.getPosition().x+2,rect6.getPosition().y);
+        rect7.setPosition(rect7.getPosition().x+2,rect7.getPosition().y);
+        rect8.setPosition(rect8.getPosition().x+2,rect8.getPosition().y);
+        break;
+    }
   }
 
   delwin(menuwin);
   endwin();
   return 0;
 }
-
+/**/
 /*
 int main(int argc,char** argv){
   using namespace SizzleFX;

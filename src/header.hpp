@@ -7,7 +7,7 @@
 #include "core/audio.hpp"
 #include "utils/math.hpp"
 
-std::vector<std::string>bannerSmall={
+const std::vector<std::string>bannerSmall={
 "     █████████████  ███                                            ██                     ",
 " ██████████████████ ████                                           ████                     ",
 "█████       ████ ███                                            █████                     ",

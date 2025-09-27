@@ -10,11 +10,9 @@ static const std::vector<std::string>waveformLevels={" ","▁","▂","▃","▄"
 
 class UI{
   protected:
-  g3dl_math::Vector2i pos,size;
-  g3dl_math::Vector3i fgCol,bgCol;
-  short colorPairId;
-  const short defaultColorPairId=1;
-  bool isHighlighted=false,useColorPairId=false;
+  g3dl_math::Vector2i pos_m,size_m;
+  short colorPairID_m=1;
+  bool highlighted_m=false;
 
   public:
   enum class ColorMode{
@@ -25,65 +23,31 @@ class UI{
 
   virtual void draw(WINDOW* window)=0;
 
-  virtual void initColor(short colorPairID,g3dl_math::Vector3i& foregroundColor,g3dl_math::Vector3i& backgroundColor,ColorMode& mode){
-    if(mode==ColorMode::DEFAULT){
-      init_pair(colorPairID,rgbToBasicColor(foregroundColor),rgbToBasicColor(backgroundColor));
-    }else if(mode==ColorMode::BASIC){
-      init_pair(colorPairID,rgbToBasicColor(foregroundColor),rgbToBasicColor(backgroundColor));
-    }else if(mode==ColorMode::EXTENDED && COLORS>=256){
-      init_pair(colorPairID,rgbTo256Color(foregroundColor),rgbTo256Color(backgroundColor));
-    }else{
-      init_pair(colorPairID,COLOR_WHITE,COLOR_BLACK); // default
-    }
-  }
-
   // Setters
-  virtual void setPosition(int x,int y){pos.set(x,y);}
-  virtual void setPosition(g3dl_math::Vector2i& position){pos.set(position);}
-  virtual void setX(int x){pos.x=x;}
-  virtual void setY(int y){pos.y=y;}
+  virtual void setPosition(int x,int y){pos_m.set(x,y);}
+  virtual void setPosition(g3dl_math::Vector2i& position){pos_m.set(position);}
+  virtual void setX(int x){pos_m.x=x;}
+  virtual void setY(int y){pos_m.y=y;}
 
-  virtual void setSize(int width,int height){size.set(width,height);}
-  virtual void setSize(g3dl_math::Vector2i& size){this->size.set(size);}
-  virtual void setWidth(int width){size.x=width;}
-  virtual void setHeight(int height){size.y=height;}
+  virtual void setSize(int width,int height){size_m.set(width,height);}
+  virtual void setSize(g3dl_math::Vector2i& size){size_m.set(size);}
+  virtual void setWidth(int width){size_m.x=width;}
+  virtual void setHeight(int height){size_m.y=height;}
 
-  virtual void setForegroundColor(int r,int g,int b){fgCol.set(r,g,b);}
-  virtual void setForegroundColor(g3dl_math::Vector3i& color){fgCol.set(color);}
-  virtual void setForegroundR(int r){fgCol.x=r;}
-  virtual void setForegroundG(int g){fgCol.y=g;}
-  virtual void setForegroundB(int b){fgCol.z=b;}
-
-  virtual void setBackgroundColor(int r,int g,int b){bgCol.set(r,g,b);}
-  virtual void setBackgroundColor(g3dl_math::Vector3i& color){bgCol.set(color);}
-  virtual void setBackgroundR(int r){bgCol.x=r;}
-  virtual void setBackgroundG(int g){bgCol.y=g;}
-  virtual void setBackgroundB(int b){bgCol.z=b;}
-
-  virtual void setIsHighlight(bool highlighted){isHighlighted=highlighted;}
-  virtual void setUseColorPairID(bool useColorPairID){useColorPairId=useColorPairID;}
+  virtual void setColorPairID(short colorPairID){colorPairID_m=colorPairID;}
+  virtual void setHighlighted(bool highlighted){highlighted_m=highlighted;}
 
   // Getters
-  virtual g3dl_math::Vector2i getPosition()const{return pos;}
-  virtual g3dl_math::Vector2i getX()const{return pos.x;}
-  virtual g3dl_math::Vector2i getY()const{return pos.y;}
+  virtual g3dl_math::Vector2i getPosition()const{return pos_m;}
+  virtual g3dl_math::Vector2i getX()const{return pos_m.x;}
+  virtual g3dl_math::Vector2i getY()const{return pos_m.y;}
 
-  virtual g3dl_math::Vector2i getSize()const{return size;}
-  virtual g3dl_math::Vector2i getWidth()const{return size.x;}
-  virtual g3dl_math::Vector2i getHeight()const{return size.y;}
+  virtual g3dl_math::Vector2i getSize()const{return size_m;}
+  virtual g3dl_math::Vector2i getWidth()const{return size_m.x;}
+  virtual g3dl_math::Vector2i getHeight()const{return size_m.y;}
 
-  virtual g3dl_math::Vector3i getForegroundColor()const{return fgCol;}
-  virtual g3dl_math::Vector3i getForegroundR()const{return fgCol.x;}
-  virtual g3dl_math::Vector3i getForegroundG()const{return fgCol.y;}
-  virtual g3dl_math::Vector3i getForegroundB()const{return fgCol.z;}
-
-  virtual g3dl_math::Vector3i getBackgroundColor()const{return bgCol;}
-  virtual g3dl_math::Vector3i getBackgroundR()const{return bgCol.x;}
-  virtual g3dl_math::Vector3i getBackgroundG()const{return bgCol.y;}
-  virtual g3dl_math::Vector3i getBackgroundB()const{return bgCol.z;}
-
-  virtual bool getIsHighlight()const{return isHighlighted;}
-  virtual bool getUseColorPairID()const{return useColorPairId;}
+  virtual short getColorPairID()const{return colorPairID_m;}
+  virtual bool getHighlighted()const{return highlighted_m;}
 
   // utils
   // --- Map RGB -> ncurses 8 colors ---
@@ -106,6 +70,24 @@ class UI{
     int b=rgb.z * 6/256;
     return 16+(36 * r)+(6 * g)+b; // 256-color cube index
   }
+
+  static void initColor(short colorPairID,const g3dl_math::Vector3i& foregroundColor,const g3dl_math::Vector3i& backgroundColor,ColorMode mode=ColorMode::DEFAULT){
+    if(mode==ColorMode::DEFAULT){
+      const char* colorterm=getenv("COLORTERM");
+      if(colorterm){
+        init_pair(colorPairID,rgbTo256Color(foregroundColor),rgbTo256Color(backgroundColor));
+      }else{
+        init_pair(colorPairID,rgbToBasicColor(foregroundColor),rgbToBasicColor(backgroundColor));
+      }
+    }else if(mode==ColorMode::BASIC){
+      init_pair(colorPairID,rgbToBasicColor(foregroundColor),rgbToBasicColor(backgroundColor));
+    }else if(mode==ColorMode::EXTENDED && COLORS>=256){
+      init_pair(colorPairID,rgbTo256Color(foregroundColor),rgbTo256Color(backgroundColor));
+    }else{
+      init_pair(colorPairID,COLOR_WHITE,COLOR_BLACK); // default
+    }
+  }
+
 };
 
 class Rectangle : public UI{
@@ -115,43 +97,28 @@ class Rectangle : public UI{
   };
 
   private:
-  ColorMode colorMode;
   std::string character;
   bool hasBorder;
   Border bord;
-  short tmpFG,tmpBG;
 
   public:
-  Rectangle(const g3dl_math::Vector2i& position,const g3dl_math::Vector2i& size,ColorMode mode=ColorMode::BASIC){
-    pos.set(position);
-    this->size.set(size);
-    fgCol.set(255);
-    bgCol.set(0);
-    isHighlighted=false;
+  Rectangle(const g3dl_math::Vector2i& position,const g3dl_math::Vector2i& size){
+    pos_m.set(position);
+    size_m.set(size);
+    highlighted_m=false;
     character="█";
     hasBorder=false;
-    colorMode=mode;
 
     setBorderChars("┌","┐","└","┘","─","─","│","│");
   }
   void draw(WINDOW* window)override{
-    int startX=pos.x;
-    int startY=pos.y;
-    int width=size.x;
-    int height=size.y;
+    int startX=pos_m.x;
+    int startY=pos_m.y;
+    int width=size_m.x;
+    int height=size_m.y;
 
-    // --- Apply colors ---
-    if(useColorPairId){
-      // Use user Specified color-pair
-      initColor(colorPairId,fgCol,bgCol,colorMode);
-      wattron(window,COLOR_PAIR(colorPairId));
-    }else{
-      // backup & dictate
-      pair_content(defaultColorPairId,&tmpFG,&tmpBG);
-      initColor(defaultColorPairId,fgCol,bgCol,colorMode);
-      wattron(window,COLOR_PAIR(defaultColorPairId));
-    }
-    if(isHighlighted)wattron(window,A_REVERSE);
+    wattron(window,COLOR_PAIR(colorPairID_m));
+    if(highlighted_m)wattron(window,A_REVERSE);
 
     // --- Draw with or without border ---
     if(hasBorder && width>=2 && height>=2){
@@ -164,7 +131,7 @@ class Rectangle : public UI{
       for(int j=1;j<height-1;j++){
         mvwprintw(window,startY+j,startX,"%s",bord.lv.c_str());
         //fill inside rect
-        if(character!=" ")
+        if(character!=" " && character!="")
           for(int i=1;i<width-1;i++)
             mvwprintw(window,startY+j,startX+i,"%s",character.c_str());
         mvwprintw(window,startY+j,startX+width-1,"%s",bord.rv.c_str());
@@ -177,22 +144,15 @@ class Rectangle : public UI{
 
     }else{
       // No border: fill entire rect
-      if(character!=" ")
+      if(character!=" " && character!="")
         for(int j=0;j<height;j++)
           for(int i=0;i<width;i++)
             mvwprintw(window,startY+j,startX+i,"%s",character.c_str());
     }
 
     // --- Restore attributes ---
-    if(isHighlighted)wattroff(window,A_REVERSE);
-    if(useColorPairId){
-      // disable color
-      wattroff(window,COLOR_PAIR(colorPairId));
-    }else{
-      // disable color & give up hostage
-      wattroff(window,COLOR_PAIR(defaultColorPairId));
-      init_pair(defaultColorPairId,tmpFG,tmpBG);
-    }
+    if(highlighted_m)wattroff(window,A_REVERSE);
+    wattroff(window,COLOR_PAIR(colorPairID_m));
   }
 
   void setFillCharacter(std::string fillCharacter){character=fillCharacter;}
@@ -225,58 +185,46 @@ class Rectangle : public UI{
 
 class Button : public UI{
   Rectangle rect;
-  g3dl_math::Vector3i borderFGColor;
-  g3dl_math::Vector3i borderBGColor;
   std::string label;
-  short colorPairId;
 
 public:
-  Button(const g3dl_math::Vector2i& pos,const g3dl_math::Vector2i& size,const std::string& text) : rect(pos,size,Rectangle::ColorMode::BASIC),label(text){
-    fgCol.set(255);
-    bgCol.set(0);
-
-    rect.setForegroundColor(borderFGColor);
-    rect.setBackgroundColor(borderBGColor);
-    rect.setHasBorder(true);
+  Button(const g3dl_math::Vector2i& position,const g3dl_math::Vector2i& size,const std::string& text):rect(position,size){
+    rect.setColorPairID(colorPairID_m);
     rect.setFillCharacter(" ");
+    rect.setHasBorder(true);
+
+    pos_m.set(position);
+    size_m.set(size);
+    highlighted_m=false;
+    label=text;
   }
 
   void draw(WINDOW* window)override{
-    int startX=pos.x;
-    int startY=pos.y;
-    int width=size.x;
-    int height=size.y;
-    rect.setPosition(pos);
-    rect.setSize(size);
+    int startX=pos_m.x;
+    int startY=pos_m.y;
+    int width=size_m.x;
+    int height=size_m.y;
+    rect.setPosition(pos_m);
+    rect.setSize(size_m);
     // rect.setColor(borderColor);
 
     rect.draw(window);
 
     // --- Draw label ---
-    if(isHighlighted)wattron(window,A_REVERSE);
+    wattron(window,COLOR_PAIR(colorPairID_m));
+    if(highlighted_m)wattron(window,A_REVERSE);
 
     std::string clipped=label.substr(0,width-2); // prevent overflow
     int text_x=startX+(width-(int)clipped.size())/2;
     int text_y=startY+height/2;
 
-    wattron(window,COLOR_PAIR(colorPairId));
+    wattron(window,COLOR_PAIR(colorPairID_m));
     mvwprintw(window,text_y,text_x,"%s",clipped.c_str());
-    wattroff(window,COLOR_PAIR(colorPairId));
+    wattroff(window,COLOR_PAIR(colorPairID_m));
 
-    if(isHighlighted)wattroff(window,A_REVERSE);
+    if(highlighted_m)wattroff(window,A_REVERSE);
+    wattroff(window,COLOR_PAIR(colorPairID_m));
   }
-
-  void setBorderForegroundColor(int r,int g,int b){borderFGColor.set(r,g,b);}
-  void setBorderForegroundColor(g3dl_math::Vector3i& color){borderFGColor.set(color);}
-  void setBorderForegroundR(int r){borderFGColor.x=r;}
-  void setBorderForegroundG(int g){borderFGColor.y=g;}
-  void setBorderForegroundB(int b){borderFGColor.z=b;}
-
-  void setBorderBackgroundColor(int r,int g,int b){borderBGColor.set(r,g,b);}
-  void setBorderBackgroundColor(g3dl_math::Vector3i& color){borderBGColor.set(color);}
-  void setBorderBackgroundR(int r){borderBGColor.x=r;}
-  void setBorderBackgroundG(int g){borderBGColor.y=g;}
-  void setBorderBackgroundB(int b){borderBGColor.z=b;}
 
   void setLabel(std::string &label){this->label=label;}
 

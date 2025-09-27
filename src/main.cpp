@@ -1,33 +1,23 @@
 #include "header.hpp"
 
-/*
-void drawBanner(WINDOW* win,const std::vector<std::string>& banner){
-  int height,width;
-  getmaxyx(win,height,width);
-
+void drawBanner(const std::vector<std::string>& banner,const g3dl_math::Vector2i& screen_size,const g3dl_math::Vector2i& banner_size,int spacing_y){
   for(size_t i=0;i<banner.size();i++){
-    int row=(height-(int)banner.size())/2+i;
-    int col=(width-(int)banner[i].length())/2;
+    int row=((screen_size.y-(int)banner.size())/2)+i;
+    int col=(screen_size.x-(int)banner[i].length())/2;
 
     // Clip if the terminal is too narrow
     if(col<0)col=0;
-    if(row>=0 && row<height){
-      mvwprintw(win,row,col,"%s",banner[i].c_str());
+    if(row>=0 && row<screen_size.y){
+      mvwprintw(stdscr,i+((screen_size.y-banner_size.y-spacing_y)/2),(screen_size.x-banner_size.x)/2,"%s",banner[i].c_str());
     }
   }
 }
-const std::vector<std::string>& selectBanner(int width){
-  // fallback if too small for even bannerSmall
-  if(width<(int)bannerSmall[0].length())
-    return bannerSmall;
 
-  // use big banner if terminal is wide enough
-  if(width>=(int)bannerBig[0].length())
-    return bannerBig;
+struct Settings{
+  std::string banner="auto"; // none, auto (detect), small, big
+};
 
-  // otherwise small
-  return bannerSmall;
-}
+static Settings settings;
 
 int main(){
   setlocale(LC_ALL,"");
@@ -38,6 +28,18 @@ int main(){
   cbreak();
   curs_set(0);
   keypad(stdscr,TRUE);
+
+  UI::initColor(0,{0},{0});
+  UI::initColor(1,{255,0,0},{0});
+  UI::initColor(2,{0,255,0},{0});
+  UI::initColor(3,{0,0,255},{0});
+  UI::initColor(4,{167,55,76},{0});
+  UI::initColor(5,{90,0,101},{0});
+  UI::initColor(6,{200,100,110},{0});
+  UI::initColor(7,{166,255,78},{0});
+
+  int height,width;
+  getmaxyx(stdscr,height,width);
 
   std::vector<std::string>options={
     "New",
@@ -52,33 +54,87 @@ int main(){
   while(running){
     werase(stdscr);
 
-    int height,width;
     getmaxyx(stdscr,height,width);
 
     // Calculate vertical positioning
     int btn_height=3;
     int btn_width=20;
-    int spacing=2;
-    int total_height=(int)options.size() * (btn_height+spacing);
-    int start_y=(height-total_height)/2;
+    int btn_spacing=1;
+    int btn_total_height=(int)options.size() * (btn_height+btn_spacing);
+
+    int selected_banner=0; // 0=none, 1=small, 2=big
+    g3dl_math::Vector2i banner_size(0);
+    int banner_spacing=0;
+    if(width>=96){
+      if(settings.banner!="none"){
+        if(settings.banner=="auto"){
+          if(width>=138){
+            selected_banner=2;
+          }
+          else if(width>=47){
+            selected_banner=1;
+          }
+          else selected_banner=0;
+        }else if(settings.banner=="small"){
+          selected_banner=1;
+        }else if(settings.banner=="big"){
+          selected_banner=2;
+        }
+      }
+
+      switch(selected_banner){
+        case 1: // small
+          banner_size.x=96;
+          banner_size.y=31;
+          banner_spacing=2;
+          // for(size_t i=0;i<bannerSmall.size();i++){
+          //   int row=((height-(int)bannerSmall.size())/2)+i;
+          //   int col=(width-(int)bannerSmall[i].length())/2;
+          //
+          //   // Clip if the terminal is too narrow
+          //   if(col<0)col=0;
+          //   if(row>=0 && row<height){
+          //     mvwprintw(stdscr,i+((height-banner_size.y-btn_total_height-banner_spacing)/2),(width-banner_size.x)/2,"%s",bannerSmall[i].c_str());
+          //   }
+          // }
+          drawBanner(bannerSmall,{width,height},banner_size,btn_total_height+banner_spacing);
+          break;
+        case 2: // big
+          if(selected_banner==2){
+            banner_size.x=138;
+            banner_size.y=15;
+            banner_spacing=4;
+            drawBanner(bannerBig,{width,height},banner_size,btn_total_height+banner_spacing);
+          }
+          break;
+      }
+    }
+
+    int start_y=(height-btn_total_height+banner_size.y)/2;
 
     std::vector<Button>buttons;
     for(size_t i=0;i<options.size();i++){
       int x=(width-btn_width)/2;
-      int y=start_y+i * (btn_height+spacing);
+      int y=start_y+i * (btn_height+btn_spacing);
       buttons.emplace_back(g3dl_math::Vector2i(x,y),g3dl_math::Vector2i(btn_width,btn_height),options[i]);
     }
 
     // Set highlight
     for(size_t i=0;i<buttons.size();i++){
-      buttons[i].setIsHighlight((int)i==highlight);
+      buttons[i].setHighlighted((int)i==highlight);
+      buttons[i].setColorPairID(0);
       buttons[i].draw(stdscr);
     }
 
     wrefresh(stdscr);
 
-    int ch=getch();
+    int ch=wgetch(stdscr);  // blocking wait for input
     switch(ch){
+      case KEY_RESIZE:{
+        getmaxyx(stdscr,height,width);
+        wresize(stdscr,height,width);
+        mvwin(stdscr,0,0);
+      }break;// later: handle highlights, navigation, etc.
       case KEY_UP:
         highlight--;
         if(highlight<0)highlight=options.size()-1;
@@ -86,6 +142,10 @@ int main(){
       case KEY_DOWN:
         highlight++;
         if(highlight>=(int)options.size())highlight=0;
+        break;
+      case KEY_LEFT:
+        break;
+      case KEY_RIGHT:
         break;
       case 10: // Enter
         if(options[highlight]=="Exit"){
@@ -103,11 +163,12 @@ int main(){
     }
   }
 
+  delwin(stdscr);
   endwin();
   return 0;
 }
-*/
-/* BASIC RECTANGLE MOVEMENT*/
+
+/* BASIC RECTANGLE MOVEMENT
 int main(){
   initscr();
   start_color();
@@ -117,33 +178,39 @@ int main(){
   curs_set(0);
   keypad(stdscr,TRUE);
 
+  UI::initColor(0,{0},{0});
+  UI::initColor(1,{255,0,0},{0});
+  UI::initColor(2,{0,255,0},{0});
+  UI::initColor(3,{0,0,255},{0});
+  UI::initColor(4,{167,55,76},{0});
+  UI::initColor(5,{90,0,101},{0});
+  UI::initColor(6,{200,100,110},{0});
+  UI::initColor(7,{166,255,78},{0});
+
   int height,width;
   getmaxyx(stdscr,height,width);
   WINDOW *menuwin=newwin(height,width,0,0);
   keypad(menuwin,TRUE);
 
-  // --- Create your widgets ---
-  // Rectangle rect1({2,2},{15,6},{255,0,0},Rectangle::FillStyle::NONE,Rectangle::ColorMode::BASIC);
-  // Rectangle rect2({20,2},{15,6},{120,200,255},Rectangle::FillStyle::REVERSE,Rectangle::ColorMode::EXTENDED);
+  Rectangle rect1({2,2},{15,6}),
+            rect2({20,2},{15,6}),
+            rect3({38,2},{15,6}),
+            rect4({56,2},{15,6});
 
-  Rectangle rect1({2,2},{15,6},Rectangle::ColorMode::BASIC),
-            rect2({20,2},{15,6},Rectangle::ColorMode::EXTENDED),
-            rect3({38,2},{15,6},Rectangle::ColorMode::EXTENDED),
-            rect4({56,2},{15,6},Rectangle::ColorMode::EXTENDED);
+  Rectangle rect5({2,9},{15,6}),
+            rect6({20,9},{15,6}),
+            rect7({38,9},{15,6}),
+            rect8({56,9},{15,6});
 
-  Rectangle rect5({2,9},{15,6},Rectangle::ColorMode::EXTENDED),
-            rect6({20,9},{15,6},Rectangle::ColorMode::EXTENDED),
-            rect7({38,9},{15,6},Rectangle::ColorMode::EXTENDED),
-            rect8({56,9},{15,6},Rectangle::ColorMode::EXTENDED);
+  rect1.setColorPairID(0);
+  rect2.setColorPairID(1);
+  rect3.setColorPairID(2);
+  rect4.setColorPairID(3);
 
-  rect1.setForegroundColor(255,0,0);
-  rect2.setForegroundColor(0,255,0);
-  rect3.setForegroundColor(0,0,255);
-
-  rect5.setForegroundColor(167,55,76);
-  rect6.setForegroundColor(90,0,101);
-  rect7.setForegroundColor(200,100,110);
-  rect8.setForegroundColor(166,255,78);
+  rect5.setColorPairID(4);
+  rect6.setColorPairID(5);
+  rect7.setColorPairID(6);
+  rect8.setColorPairID(7);
 
   rect2.setFillCharacter("g");
   rect3.setFillCharacter("&");
@@ -235,7 +302,7 @@ int main(){
   endwin();
   return 0;
 }
-/**/
+*/
 /*
 int main(int argc,char** argv){
   using namespace SizzleFX;

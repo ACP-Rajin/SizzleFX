@@ -2,14 +2,11 @@
 
 void drawBanner(const std::vector<std::string>& banner,const g3dl_math::Vector2i& screen_size,const g3dl_math::Vector2i& banner_size,int spacing_y){
   for(size_t i=0;i<banner.size();i++){
-    int row=((screen_size.y-(int)banner.size())/2)+i;
-    int col=(screen_size.x-(int)banner[i].length())/2;
+    int row=((screen_size.y-(int)banner.size())/2)+i,col=(screen_size.x-(int)banner[i].length())/2;
 
     // Clip if the terminal is too narrow
     if(col<0)col=0;
-    if(row>=0 && row<screen_size.y){
-      mvwprintw(stdscr,i+((screen_size.y-banner_size.y-spacing_y)/2),(screen_size.x-banner_size.x)/2,"%s",banner[i].c_str());
-    }
+    if(row>=0 && row<screen_size.y)mvwprintw(stdscr,i+((screen_size.y-banner_size.y-spacing_y)/2),(screen_size.x-banner_size.x)/2,"%s",banner[i].c_str());
   }
 }
 
@@ -50,113 +47,115 @@ int main(){
 
   int highlight=0;
 
+  int state=0; // MainMenu=0, setting=1, editor=2
+  int ch;
+
   bool running=true;
   while(running){
     werase(stdscr);
 
     getmaxyx(stdscr,height,width);
 
-    // Calculate vertical positioning
-    int btn_height=3;
-    int btn_width=20;
-    int btn_spacing=1;
-    int btn_total_height=(int)options.size() * (btn_height+btn_spacing);
+    switch(state){
+      case 1:
+        running=false;
+        break;
+        
+      default: // MainMenu
+        {
+          // Calculate vertical positioning
+          int btn_height=3;
+          int btn_width=20;
+          int btn_spacing=1;
+          int btn_total_height=(int)options.size() * (btn_height+btn_spacing);
 
-    int selected_banner=0; // 0=none, 1=small, 2=big
-    g3dl_math::Vector2i banner_size(0);
-    int banner_spacing=0;
-    if(width>=96){
-      if(settings.banner!="none"){
-        if(settings.banner=="auto"){
-          if(width>=138){
-            selected_banner=2;
+          int selected_banner=0; // 0=none, 1=small, 2=big
+          g3dl_math::Vector2i banner_size(0);
+          int banner_spacing=0;
+          if(width>=96){
+            if(settings.banner!="none"){
+              if(settings.banner=="auto"){
+                if(width>=138){
+                  selected_banner=2;
+                }else if(width>=47){
+                  selected_banner=1;
+                }else selected_banner=0;
+              }else if(settings.banner=="small"){
+                selected_banner=1;
+              }else if(settings.banner=="big"){
+                selected_banner=2;
+              }
+            }
+
+            switch(selected_banner){
+              case 1: // small
+                banner_size.x=96;
+                banner_size.y=31;
+                banner_spacing=2;
+                drawBanner(bannerSmall,{width,height},banner_size,btn_total_height+banner_spacing);
+              break;
+              case 2: // big
+                banner_size.x=138;
+                banner_size.y=15;
+                banner_spacing=4;
+                drawBanner(bannerBig,{width,height},banner_size,btn_total_height+banner_spacing);
+              break;
+            }
           }
-          else if(width>=47){
-            selected_banner=1;
+
+          int start_y=(height-btn_total_height+banner_size.y)/2;
+
+          std::vector<Button>buttons;
+          for(size_t i=0;i<options.size();i++){
+            int x=(width-btn_width)/2;
+            int y=start_y+i * (btn_height+btn_spacing);
+            buttons.emplace_back(g3dl_math::Vector2i(x,y),g3dl_math::Vector2i(btn_width,btn_height),options[i]);
           }
-          else selected_banner=0;
-        }else if(settings.banner=="small"){
-          selected_banner=1;
-        }else if(settings.banner=="big"){
-          selected_banner=2;
+
+          // Set highlight
+          for(size_t i=0;i<buttons.size();i++){
+            buttons[i].setHighlighted((int)i==highlight);
+            buttons[i].setColorPairID(0);
+            buttons[i].draw(stdscr);
+          }
+
+          ch=wgetch(stdscr);
+          switch(ch){
+            case KEY_UP:
+              highlight--;
+              if(highlight<0)highlight=options.size()-1;
+              break;
+            case KEY_DOWN:
+              highlight++;
+              if(highlight>=(int)options.size())highlight=0;
+              break;
+            case 10: // Enter
+              if(options[highlight]=="Exit"){
+                running=false;
+              }else{
+                clear();
+                if(options[highlight]=="Settings"){
+                  state=1;
+                }else state=2;
+                refresh();
+                getch();
+              }
+              break;
+          }
         }
-      }
-
-      switch(selected_banner){
-        case 1: // small
-          banner_size.x=96;
-          banner_size.y=31;
-          banner_spacing=2;
-          // for(size_t i=0;i<bannerSmall.size();i++){
-          //   int row=((height-(int)bannerSmall.size())/2)+i;
-          //   int col=(width-(int)bannerSmall[i].length())/2;
-          //
-          //   // Clip if the terminal is too narrow
-          //   if(col<0)col=0;
-          //   if(row>=0 && row<height){
-          //     mvwprintw(stdscr,i+((height-banner_size.y-btn_total_height-banner_spacing)/2),(width-banner_size.x)/2,"%s",bannerSmall[i].c_str());
-          //   }
-          // }
-          drawBanner(bannerSmall,{width,height},banner_size,btn_total_height+banner_spacing);
-          break;
-        case 2: // big
-          if(selected_banner==2){
-            banner_size.x=138;
-            banner_size.y=15;
-            banner_spacing=4;
-            drawBanner(bannerBig,{width,height},banner_size,btn_total_height+banner_spacing);
-          }
-          break;
-      }
-    }
-
-    int start_y=(height-btn_total_height+banner_size.y)/2;
-
-    std::vector<Button>buttons;
-    for(size_t i=0;i<options.size();i++){
-      int x=(width-btn_width)/2;
-      int y=start_y+i * (btn_height+btn_spacing);
-      buttons.emplace_back(g3dl_math::Vector2i(x,y),g3dl_math::Vector2i(btn_width,btn_height),options[i]);
-    }
-
-    // Set highlight
-    for(size_t i=0;i<buttons.size();i++){
-      buttons[i].setHighlighted((int)i==highlight);
-      buttons[i].setColorPairID(0);
-      buttons[i].draw(stdscr);
+        break;
     }
 
     wrefresh(stdscr);
 
-    int ch=wgetch(stdscr);  // blocking wait for input
     switch(ch){
-      case KEY_RESIZE:{
-        getmaxyx(stdscr,height,width);
-        wresize(stdscr,height,width);
-        mvwin(stdscr,0,0);
-      }break;// later: handle highlights, navigation, etc.
-      case KEY_UP:
-        highlight--;
-        if(highlight<0)highlight=options.size()-1;
-        break;
-      case KEY_DOWN:
-        highlight++;
-        if(highlight>=(int)options.size())highlight=0;
-        break;
-      case KEY_LEFT:
-        break;
-      case KEY_RIGHT:
-        break;
-      case 10: // Enter
-        if(options[highlight]=="Exit"){
-          running=false;
-        }else{
-          clear();
-          mvprintw(height/2,(width-(int)options[highlight].size()-14)/2,"You selected: %s",options[highlight].c_str());
-          refresh();
-          getch();
+      case KEY_RESIZE:
+        {
+          getmaxyx(stdscr,height,width);
+          wresize(stdscr,height,width);
+          mvwin(stdscr,0,0);
         }
-        break;
+        break; // later: handle highlights, navigation, etc.
       case 'q':case 'Q':
         running=false;
         break;

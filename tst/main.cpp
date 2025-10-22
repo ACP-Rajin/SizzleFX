@@ -120,6 +120,58 @@ int main(){
   return 0;
 }
 */
+
+int main(int argc,char** argv){
+  if(argc<2){
+  }
+
+  // Audio audio("samples/o.wav");
+  Audio audio("output.wav");
+
+  setlocale(LC_ALL,"");
+  initscr();
+  start_color();
+  use_default_colors();
+  noecho();
+  cbreak();
+  curs_set(0);
+  keypad(stdscr,TRUE);
+
+  bool running=true;
+  std::string status="Press 'q' to quit.";
+
+  while(running){
+    clear();
+    mvprintw(0,0,"SizzleFX Audio Editor — Press Q to Quit");
+    mvprintw(1,0,"[S] Play [P] Pause [R] Resume [D] Stop [E] Seek [L] Loop [←][→] Seek ±0.5s");
+
+    // mvprintw(3,0,"Status: %s",audio.isPlayingNow()?(audio.isLooping()?"Playing (Looping)":"Playing"):(player.isLooping()?"Loop Ready":"Stopped"));
+
+    mvprintw(4,0,"Position: %.2lf / %.2f sec",audio.getPositionSeconds(),audio.getDuration());
+
+    refresh();
+
+    int ch=getch();
+    switch(ch) {
+      case 'q': case 'Q': running=false;break;
+      case 's': case 'S': audio.play();break;
+      case 'p': case 'P': audio.pause();break;
+      case 'r': case 'R': audio.resume();break;
+      case 'd': case 'D': audio.stop();break;
+      case 'e': case 'E': audio.setPositionSeconds(2.0);break;
+      case 'l': case 'L': audio.setLoop(true);break;
+      case KEY_LEFT:      audio.setPositionSeconds(audio.getPositionSeconds()-0.5);break;
+      case KEY_RIGHT:     audio.setPositionSeconds(audio.getPositionSeconds()+0.5);break;
+    }
+
+    // std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+
+  delwin(stdscr);
+  endwin();
+  return 0;
+}
+/*
 int main(int argc,char** argv){
   if(argc<2){
   }
@@ -175,4 +227,4 @@ int main(int argc,char** argv){
   delwin(stdscr);
   endwin();
   return 0;
-}
+}*/

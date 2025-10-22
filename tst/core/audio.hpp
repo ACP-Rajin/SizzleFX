@@ -10,6 +10,11 @@
 #include <vector>
 #include <cmath>
 #include <portaudio.h>
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
+#include <algorithm>
 
 // File-level metadata
 struct FileInfo{

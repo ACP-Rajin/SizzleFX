@@ -1,6 +1,7 @@
 #include <locale.h>
 #include <chrono>
 #include <thread>
+#include <atomic>
 #include <functional>
 
 #include "ui/UIC.hpp" // UI collection

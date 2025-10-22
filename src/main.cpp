@@ -10,8 +10,39 @@ void drawBanner(const std::vector<std::string>& banner,const g3dl_math::Vector2i
   }
 }
 
-struct Settings{
+struct MainMenuSettings{
   std::string banner="auto"; // none, auto (detect), small, big
+  bool playBGM=true; // background music
+};
+
+struct KeyBindings{
+  int up=KEY_UP;
+  int down=KEY_DOWN;
+  int left=KEY_LEFT;
+  int right=KEY_RIGHT;
+  int select=10; // Enter
+  int quit='q';
+};
+
+// struct EditorSettings{
+// };
+
+struct LayoutSettings{
+  bool showStatusBar=true;
+  bool showSidePanel=true;
+  int padding=1;
+};
+
+struct ThemeSettings{
+  int colorScheme=0; // 0=default dark, 1=dark, 2=light
+};
+
+struct Settings{
+  MainMenuSettings mainMenu;
+  KeyBindings keys;
+  // EditorSettings editor;
+  LayoutSettings layout;
+  ThemeSettings theme;
 };
 
 static Settings settings;
@@ -45,7 +76,9 @@ int main(){
     "Exit"
   };
 
-  int highlight=0;
+  int highlight_MainMenu=0,highlight_Settings=0;
+
+  Audio mainMenu_bgm({0.2f,1.0f,-0.3f,1.0f,-1.0,0.2f},2,500);
 
   int state=0; // MainMenu=0, setting=1, editor=2
   int ch;
@@ -58,31 +91,50 @@ int main(){
 
     switch(state){
       case 1:
-        running=false;
-        break;
-        
-      default: // MainMenu
         {
-          // Calculate vertical positioning
-          int btn_height=3;
-          int btn_width=20;
-          int btn_spacing=1;
-          int btn_total_height=(int)options.size() * (btn_height+btn_spacing);
+          // draw here
+          box(stdscr,0,0);
 
+          ch=wgetch(stdscr);
+          switch(ch){
+            case KEY_UP:
+              highlight_Settings--;
+              if(highlight_Settings<0)highlight_Settings=options.size()-1;
+            break;
+            case KEY_DOWN:
+              highlight_Settings++;
+              if(highlight_Settings>=(int)options.size())highlight_Settings=0;
+            break;
+            case 10: // Enter
+            break;
+          }
+        }
+      break;
+      case 2:
+        running=false;
+      break;
+      default: // MainMenu
+        int btn_height=3;
+        int btn_width=20;
+        int btn_spacing=1;
+        int banner_spacing=0;
+
+        {
           int selected_banner=0; // 0=none, 1=small, 2=big
+          int btn_total_height=(int)options.size() * (btn_height+btn_spacing);
           g3dl_math::Vector2i banner_size(0);
-          int banner_spacing=0;
-          if(width>=96){
-            if(settings.banner!="none"){
-              if(settings.banner=="auto"){
+
+          if(width>=96 && height>=31+btn_total_height+banner_spacing){
+            if(settings.mainMenu.banner!="none"){
+              if(settings.mainMenu.banner=="auto"){
                 if(width>=138){
                   selected_banner=2;
                 }else if(width>=47){
                   selected_banner=1;
                 }else selected_banner=0;
-              }else if(settings.banner=="small"){
+              }else if(settings.mainMenu.banner=="small"){
                 selected_banner=1;
-              }else if(settings.banner=="big"){
+              }else if(settings.mainMenu.banner=="big"){
                 selected_banner=2;
               }
             }
@@ -112,9 +164,11 @@ int main(){
             buttons.emplace_back(g3dl_math::Vector2i(x,y),g3dl_math::Vector2i(btn_width,btn_height),options[i]);
           }
 
+          if(settings.mainMenu.playBGM)mainMenu_bgm.play();
+
           // Set highlight
           for(size_t i=0;i<buttons.size();i++){
-            buttons[i].setHighlighted((int)i==highlight);
+            buttons[i].setHighlighted((int)i==highlight_MainMenu);
             buttons[i].setColorPairID(0);
             buttons[i].draw(stdscr);
           }
@@ -122,43 +176,42 @@ int main(){
           ch=wgetch(stdscr);
           switch(ch){
             case KEY_UP:
-              highlight--;
-              if(highlight<0)highlight=options.size()-1;
-              break;
+              highlight_MainMenu--;
+              if(highlight_MainMenu<0)highlight_MainMenu=options.size()-1;
+            break;
             case KEY_DOWN:
-              highlight++;
-              if(highlight>=(int)options.size())highlight=0;
-              break;
+              highlight_MainMenu++;
+              if(highlight_MainMenu>=(int)options.size())highlight_MainMenu=0;
+            break;
             case 10: // Enter
-              if(options[highlight]=="Exit"){
+              if(options[highlight_MainMenu]=="Exit"){
                 running=false;
               }else{
                 clear();
-                if(options[highlight]=="Settings"){
+                if(options[highlight_MainMenu]=="Settings"){
                   state=1;
                 }else state=2;
                 refresh();
-                getch();
               }
-              break;
+            break;
           }
         }
-        break;
+      break;
     }
 
     wrefresh(stdscr);
 
     switch(ch){
-      case KEY_RESIZE:
+      case KEY_RESIZE: // Refresh
         {
           getmaxyx(stdscr,height,width);
           wresize(stdscr,height,width);
           mvwin(stdscr,0,0);
         }
-        break; // later: handle highlights, navigation, etc.
+      break;
       case 'q':case 'Q':
         running=false;
-        break;
+      break;
     }
   }
 
@@ -304,43 +357,62 @@ int main(){
 */
 /*
 int main(int argc,char** argv){
-  using namespace SizzleFX;
-
   if(argc<2){
   }
 
-  std::string state="MainMenu";
-
-  Audio audio("samples/o.wav");
+  // Audio audio("samples/o.wav");
+  Audio audio("output.wav");
   const auto& samples=audio.audioFile.decoded.samples;
-  UI::initUI();
+
+  AudioPlayer player;
+  player.load(audio.audioFile.decoded.samples,audio.audioFile.playbackInfo.numChannels,audio.audioFile.playbackInfo.sampleRate);
+
+  setlocale(LC_ALL,"");
+  initscr();
+  start_color();
+  use_default_colors();
+  noecho();
+  cbreak();
+  curs_set(0);
+  keypad(stdscr,TRUE);
+
   bool running=true;
   std::string status="Press 'q' to quit.";
 
   while(running){
     clear();
-    if(state=="MainMenu"){
-      attron(COLOR_PAIR(1));
-      mvprintw(0,0," SizzleFX Audio Editor ");
-      for(int i=24;i<COLS;++i)mvaddch(0,i,' ');
-      attroff(COLOR_PAIR(1));
+    mvprintw(0,0,"SizzleFX Audio Editor — Press Q to Quit");
+    mvprintw(1,0,"[S]tart  [P]ause  [R]esume  [D]stop  [E] Seek  [L]oop  [←][→] Seek ±0.5s");
 
-      attron(COLOR_PAIR(2));
-      mvprintw(1,0," move with [↑] [↓] [←] [→] ");
-      mvprintw(1,0,"");
-      for(int i=39;i<COLS;++i)mvaddch(1,i,' ');
-      attroff(COLOR_PAIR(2));
-    }
+    mvprintw(3,0,"Status: %s",player.isPlayingNow()?(player.isLooping()?"Playing (Looping)":"Playing"):(player.isLooping()?"Loop Ready":"Stopped"));
+
+    mvprintw(4,0,"Position: %.2lf / %.2f sec",player.getCurrentTime(),player.getDurationSeconds());
+
     refresh();
 
     int ch=getch();
-    if(ch=='q'||ch=='Q')running=false;
-    if(ch=='p'||ch=='P')audio.play();
+    switch(ch) {
+      case 'q': case 'Q': running=false;break;
+      case 's': case 'S': player.start();break;
+      case 'p': case 'P': player.pause();break;
+      case 'r': case 'R': player.resume();break;
+      case 'd': case 'D': player.stop();break;
+      case 'e': case 'E': player.seek(2.0);break;
+      case 'l': case 'L': player.setLoop(!player.isLooping());
+                          if(player.isLooping())player.setLoopRegion(0.0,3.0);
+                          break;
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      case KEY_LEFT:      player.seek(player.getCurrentTime()-0.5);
+                          break;
+
+      case KEY_RIGHT:     player.seek(player.getCurrentTime()+0.5);
+                          break;
+    }
+
+    // std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 
-  UI::shutdownUI();
-
+  delwin(stdscr);
+  endwin();
   return 0;
 };*/

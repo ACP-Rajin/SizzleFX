@@ -95,7 +95,7 @@ class Audio{
 
   Audio(){}
   Audio(std::string path){reload(path);}
-  Audio(std::vector<float>& samples,int channels,int sampleRate){reload(samples,channels,sampleRate);}
+  Audio(const std::vector<float>& samples,int channels,int sampleRate){reload(samples,channels,sampleRate);}
 
   bool reload(const std::string& path){
     std::string extention=path.substr(path.find_last_of('.')+1);
@@ -106,7 +106,7 @@ class Audio{
     else if(extention=="opus"||extention=="OPUS")return loadOPUS(path);
     else throw std::runtime_error("Unsupported audio format: "+extention);
   }
-  void reload(std::vector<float>& samples,int channels,int sampleRate){
+  void reload(const std::vector<float>& samples,int channels,int sampleRate){
     audioFile.decoded.samples=samples;
     audioFile.playbackInfo.numChannels=channels;
     audioFile.playbackInfo.sampleRate=sampleRate;

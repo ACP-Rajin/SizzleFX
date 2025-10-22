@@ -10,7 +10,7 @@ class Audio{
 
   Audio(){}
   Audio(std::string path){reload(path);}
-  Audio(std::vector<float>& samples,int channels,int sampleRate){reload(samples,channels,sampleRate);}
+  Audio(const std::vector<float>& samples,int channels,int sampleRate){reload(samples,channels,sampleRate);}
 
   bool reload(const std::string& path){
     std::string extention=path.substr(path.find_last_of('.')+1);
@@ -21,7 +21,7 @@ class Audio{
     else if(extention=="opus"||extention=="OPUS")return loadOPUS(path);
     else throw std::runtime_error("Unsupported audio format: "+extention);
   }
-  void reload(std::vector<float>& samples,int channels,int sampleRate){
+  void reload(const std::vector<float>& samples,int channels,int sampleRate){
     audioFile.decoded.samples=samples;
     audioFile.playbackInfo.numChannels=channels;
     audioFile.playbackInfo.sampleRate=sampleRate;
@@ -213,5 +213,183 @@ private:
   bool loadOPUS(const std::string& path){
     std::cout << "I am OPUS at" << path << "\n";
     return true;
+  }
+};
+
+class AudioPlayer{
+  std::vector<float>samples;
+  int numChannels=0;
+  int sampleRate=0;
+  uint64_t totalFrames=0;
+  std::atomic<uint64_t>currentFrame{0};
+
+  PaStream* stream=nullptr;
+
+  std::atomic<bool>isPlaying{false};
+  std::atomic<bool>isPaused{false};
+
+  // Loop state
+  std::atomic<bool>loopEnabled{false};
+  std::atomic<uint64_t>loopStartFrame{0};
+  std::atomic<uint64_t>loopEndFrame{0};
+
+  public:
+  AudioPlayer()=default;
+  ~AudioPlayer(){stop();}
+
+  bool load(const std::vector<float>& samples,int channels,int sampleRate){
+    if(samples.empty()||channels<=0||sampleRate<=0)return false;
+
+    this->samples=samples;
+    this->numChannels=channels;
+    this->sampleRate=sampleRate;
+    totalFrames=samples.size()/channels;
+    currentFrame.store(0);
+
+    loopEnabled=false;
+    loopStartFrame=0;
+    loopEndFrame=totalFrames;
+
+    return true;
+  }
+
+  bool start(){
+    if(samples.empty())return false;
+    if(isPlaying)return true; // already playing
+
+    Pa_Initialize();
+
+    PaStreamParameters outputParams{};
+    outputParams.device=Pa_GetDefaultOutputDevice();
+    outputParams.channelCount=numChannels;
+    outputParams.sampleFormat=paFloat32;
+    outputParams.suggestedLatency=Pa_GetDeviceInfo(outputParams.device)->defaultLowOutputLatency;
+
+    Pa_OpenStream(&stream,nullptr,&outputParams,sampleRate,paFramesPerBufferUnspecified,paClipOff,&AudioPlayer::paCallback,this);
+
+    isPlaying=true;
+    isPaused=false;
+
+    Pa_StartStream(stream);
+    return true;
+  }
+
+  void pause(){isPaused=true;}
+  void resume(){isPaused=false;}
+
+  void stop(){
+    if(!isPlaying)return;
+    isPlaying=false;
+
+    if(stream){
+      Pa_StopStream(stream);
+      Pa_CloseStream(stream);
+      stream=nullptr;
+    }
+
+    Pa_Terminate();
+  }
+
+  void seek(double seconds){
+    if(sampleRate<=0)return;
+    uint64_t target=static_cast<uint64_t>(seconds * sampleRate);
+    if(target>=totalFrames)target=totalFrames-1;
+    currentFrame.store(target);
+  }
+
+  // ----- Looping Controls -----
+  void setLoop(bool enabled){loopEnabled=enabled;}
+
+  void setLoopRegion(double startSec,double endSec){
+    if(sampleRate<=0)return;
+    uint64_t start=static_cast<uint64_t>(startSec * sampleRate),end=static_cast<uint64_t>(endSec * sampleRate);
+
+    if(end>totalFrames)end=totalFrames;
+    if(start>=end)start=0; // safety
+    loopStartFrame=start;
+    loopEndFrame=end;
+  }
+
+  void resetLoopRegion(){
+    loopStartFrame=0;
+    loopEndFrame=totalFrames;
+  }
+
+  // ----- Info -----
+  bool isLooping()const{return loopEnabled;}
+  bool isPlayingNow()const{return isPlaying && !isPaused;}
+
+  double getLoopStartSec()const{return static_cast<double>(loopStartFrame)/sampleRate;}
+  double getLoopEndSec()const{return static_cast<double>(loopEndFrame)/sampleRate;}
+
+  double getDurationSeconds()const{return sampleRate?static_cast<double>(totalFrames)/sampleRate:0.0;}
+  double getCurrentTime()const{return sampleRate?static_cast<double>(currentFrame.load())/sampleRate:0.0;}
+
+  private:
+  // static int paCallback(const void* input, void* output,
+  //     unsigned long frameCount,
+  //     const PaStreamCallbackTimeInfo*, PaStreamCallbackFlags,
+  //     void* userData) {
+  //   auto* self = reinterpret_cast<AudioPlayer*>(userData);
+  //   float* out = reinterpret_cast<float*>(output);
+  //
+  //   if (!self->isPlaying) return paComplete;
+  //
+  //   if (self->isPaused) {
+  //     std::fill(out, out + frameCount * self->numChannels, 0.0f);
+  //     return paContinue;
+  //   }
+  //
+  //   uint64_t start = self->currentFrame.load();
+  //   uint64_t end = start + frameCount;
+  //
+  //   if (end > self->totalFrames) {
+  //     end = self->totalFrames;
+  //     self->isPlaying = false;
+  //   }
+  //
+  //   uint64_t samplesToCopy = (end - start) * self->numChannels;
+  //   std::copy_n(self->samples.data() + start * self->numChannels, samplesToCopy, out);
+  //
+  //   if (end < self->totalFrames)
+  //     std::fill(out + samplesToCopy, out + frameCount * self->numChannels, 0.0f);
+  //
+  //   self->currentFrame.store(end);
+  //   return self->isPlaying ? paContinue : paComplete;
+  // }
+
+  static int paCallback(const void* input,void* output,unsigned long frameCount,const PaStreamCallbackTimeInfo*,PaStreamCallbackFlags,void* userData){
+    auto* self=reinterpret_cast<AudioPlayer*>(userData);
+    float* out=reinterpret_cast<float*>(output);
+
+    if(!self->isPlaying)return paComplete;
+
+    if(self->isPaused){
+      std::fill(out,out+frameCount * self->numChannels,0.0f);
+      return paContinue;
+    }
+
+    uint64_t start=self->currentFrame.load();
+    uint64_t end=start+frameCount;
+
+    for(unsigned long i=0;i<frameCount;++i){
+      if(start>=self->loopEndFrame){
+        if(self->loopEnabled){
+          start=self->loopStartFrame; // wrap around
+        }else{
+          self->isPlaying=false;
+          // fill remaining buffer with silence
+          std::fill(out+i * self->numChannels,out+frameCount * self->numChannels,0.0f);
+          self->currentFrame.store(self->totalFrames);
+          return paComplete;
+        }
+      }
+
+      for(int ch=0;ch<self->numChannels;++ch)out[i * self->numChannels + ch]=self->samples[start * self->numChannels + ch];
+      ++start;
+    }
+
+    self->currentFrame.store(start);
+    return paContinue;
   }
 };

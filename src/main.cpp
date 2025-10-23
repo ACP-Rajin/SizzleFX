@@ -360,12 +360,7 @@ int main(int argc,char** argv){
   if(argc<2){
   }
 
-  // Audio audio("samples/o.wav");
-  Audio audio("output.wav");
-  const auto& samples=audio.audioFile.decoded.samples;
-
-  AudioPlayer player;
-  player.load(audio.audioFile.decoded.samples,audio.audioFile.playbackInfo.numChannels,audio.audioFile.playbackInfo.sampleRate);
+  Audio audio("samples/o.wav");
 
   setlocale(LC_ALL,"");
   initscr();
@@ -382,31 +377,25 @@ int main(int argc,char** argv){
   while(running){
     clear();
     mvprintw(0,0,"SizzleFX Audio Editor — Press Q to Quit");
-    mvprintw(1,0,"[S]tart  [P]ause  [R]esume  [D]stop  [E] Seek  [L]oop  [←][→] Seek ±0.5s");
+    mvprintw(1,0,"[S] Play [P] Pause [R] Resume [D] Stop [E] Seek [L] Loop [←][→] Seek ±0.5s");
 
-    mvprintw(3,0,"Status: %s",player.isPlayingNow()?(player.isLooping()?"Playing (Looping)":"Playing"):(player.isLooping()?"Loop Ready":"Stopped"));
+    mvprintw(3,0,"Status: %s",audio.getState()==Audio::PlaybackState::Playing?(audio.getIsLoop()?"Playing (Looping)":"Playing"):(audio.getIsLoop()?"Loop Ready":"Stopped"));
 
-    mvprintw(4,0,"Position: %.2lf / %.2f sec",player.getCurrentTime(),player.getDurationSeconds());
+    mvprintw(4,0,"Position: %.2lf / %.2f sec",audio.getPositionInSeconds(),audio.getDuration());
 
     refresh();
 
     int ch=getch();
     switch(ch) {
       case 'q': case 'Q': running=false;break;
-      case 's': case 'S': player.start();break;
-      case 'p': case 'P': player.pause();break;
-      case 'r': case 'R': player.resume();break;
-      case 'd': case 'D': player.stop();break;
-      case 'e': case 'E': player.seek(2.0);break;
-      case 'l': case 'L': player.setLoop(!player.isLooping());
-                          if(player.isLooping())player.setLoopRegion(0.0,3.0);
-                          break;
-
-      case KEY_LEFT:      player.seek(player.getCurrentTime()-0.5);
-                          break;
-
-      case KEY_RIGHT:     player.seek(player.getCurrentTime()+0.5);
-                          break;
+      case 's': case 'S': audio.play();break;
+      case 'p': case 'P': audio.pause();break;
+      case 'r': case 'R': audio.resume();break;
+      case 'd': case 'D': audio.stop();break;
+      case 'e': case 'E': audio.setPositionInSeconds(2.0);break;
+      case 'l': case 'L': audio.setIsLoop(!audio.getIsLoop());break;
+      case KEY_LEFT:      audio.setPositionInSeconds(audio.getPositionInSeconds()-0.5);break;
+      case KEY_RIGHT:     audio.setPositionInSeconds(audio.getPositionInSeconds()+0.5);break;
     }
 
     // std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -415,4 +404,4 @@ int main(int argc,char** argv){
   delwin(stdscr);
   endwin();
   return 0;
-};*/
+}*/

@@ -138,6 +138,7 @@ class Audio{
   inline size_t getSampleCount()const{return audioFile.decoded.samples.size();}
   inline size_t getSamplesPerChannel()const{return audioFile.playbackInfo.numChannels?audioFile.decoded.samples.size()/audioFile.playbackInfo.numChannels:0;}
   inline double getDuration()const{return audioFile.playbackInfo.sampleRate?static_cast<double>(audioFile.decoded.totalFrames)/audioFile.playbackInfo.sampleRate:0.0;}
+  inline PlaybackState getState()const{return state;}
   inline bool getIsLoop()const{return loopEnabled;}
   inline uint32_t getLoopCount()const{return loopCount;}
   inline double getPositionInSeconds()const{

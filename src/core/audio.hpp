@@ -159,6 +159,7 @@ class Audio{
   }
 
   bool play(){
+    if(state.load()==PlaybackState::Stopped)setPositionInSeconds(0);
     if(!hasDecodedData())return false;
 
     PlaybackState expected=PlaybackState::Stopped;
@@ -176,10 +177,10 @@ class Audio{
     }
     return true;
   }
-  
-  bool play(std::vector<float>& samples,int channels,int sampleRate){
-    reload(samples,channels,sampleRate);
-    play();
+
+  static bool playOneShot(const std::string& path){
+    Audio tmp(path);
+    return tmp.play();
   }
 
   static bool playOneShot(std::vector<float> &samples,int channels,int sampleRate){
@@ -188,13 +189,7 @@ class Audio{
   }
 
   void pause(){if(state.load()==PlaybackState::Playing)state.store(PlaybackState::Paused);}
-  void resume(){
-    if(state.load()==PlaybackState::Paused){
-      state.store(PlaybackState::Playing);
-    }else if(state.load()==PlaybackState::Stopped){
-      play();
-    }
-  }
+  void resume(){if(state.load()==PlaybackState::Paused)state.store(PlaybackState::Playing);}
   void stop(){
     if(stream){
       // request PortAudio to stop
@@ -419,6 +414,7 @@ class Audio{
           self->playedLoops.fetch_add(1);
           framePos=0;
           self->currentFrame.store(0);
+          self->state.store(PlaybackState::Playing);
         }else{
           self->state.store(PlaybackState::Stopped);
           std::fill(out + f * channels,out + framesPerBuffer * channels,0.0f);

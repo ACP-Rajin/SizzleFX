@@ -8,7 +8,7 @@
 #include <string>
 #include <sstream>
 #include "core/audio.cpp"
-/*
+/* // Test 1
 void printHeader(HeaderWAV &header){
   std::cout << "WAV Header:\n Chunk ID: ";
   std::cout.write(header.chunkID,4); std::cout << "\n";
@@ -120,13 +120,12 @@ int main(){
   return 0;
 }
 */
+// Test 2
+int main(int argc,char *argv[]){
+  // if(argc<2)return 1;
 
-int main(int argc,char** argv){
-  if(argc<2){
-  }
-
-  // Audio audio("samples/o.wav");
-  Audio audio("output.wav");
+  Audio audio("samples/o.wav"),audio1("samples/game_over.wav");
+  if(argc>1)audio.reload(static_cast<std::string>(argv[1]));
 
   setlocale(LC_ALL,"");
   initscr();
@@ -136,6 +135,7 @@ int main(int argc,char** argv){
   cbreak();
   curs_set(0);
   keypad(stdscr,TRUE);
+  timeout(100);
 
   bool running=true;
   std::string status="Press 'q' to quit.";
@@ -152,7 +152,7 @@ int main(int argc,char** argv){
     refresh();
 
     int ch=getch();
-    switch(ch) {
+    switch(ch){
       case 'q': case 'Q': running=false;break;
       case 's': case 'S': audio.play();break;
       case 'p': case 'P': audio.pause();break;
@@ -163,8 +163,6 @@ int main(int argc,char** argv){
       case KEY_LEFT:      audio.setPositionInSeconds(audio.getPositionInSeconds()-0.5);break;
       case KEY_RIGHT:     audio.setPositionInSeconds(audio.getPositionInSeconds()+0.5);break;
     }
-
-    // std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 
   delwin(stdscr);

@@ -48,6 +48,8 @@ struct Settings{
 static Settings settings;
 
 int main(){
+  printf("%i",Audio("samples/game_over.wav").audioFile.playbackInfo.sampleRate);
+
   setlocale(LC_ALL,"");
   initscr();
   start_color();
@@ -78,7 +80,16 @@ int main(){
 
   int highlight_MainMenu=0,highlight_Settings=0;
 
-  Audio mainMenu_bgm({0.2f,1.0f,-0.3f,1.0f,-1.0,0.2f},2,500);
+  std::vector<float>sampleRate(500);
+  for(size_t i=0;i<500/5;i++){
+    sampleRate.emplace_back(0.2);
+    sampleRate.emplace_back(1.0);
+    sampleRate.emplace_back(-.3);
+    sampleRate.emplace_back(1.0);
+    sampleRate.emplace_back(-1);
+  }
+  Audio bgm_MainMenu({0.2f,1.0f,-0.3f,1.0f,-1.0},2,100);
+  bgm_MainMenu.setIsLoop(true);
 
   int state=0; // MainMenu=0, setting=1, editor=2
   int ch;
@@ -164,7 +175,7 @@ int main(){
             buttons.emplace_back(g3dl_math::Vector2i(x,y),g3dl_math::Vector2i(btn_width,btn_height),options[i]);
           }
 
-          if(settings.mainMenu.playBGM)mainMenu_bgm.play();
+          if(settings.mainMenu.playBGM)bgm_MainMenu.play();
 
           // Set highlight
           for(size_t i=0;i<buttons.size();i++){
@@ -191,6 +202,7 @@ int main(){
                 if(options[highlight_MainMenu]=="Settings"){
                   state=1;
                 }else state=2;
+                bgm_MainMenu.stop();
                 refresh();
               }
             break;

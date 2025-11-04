@@ -3,24 +3,29 @@ Compiler=g++
 C++Version=17
 CompilerFLAGS=-Wall -Wextra -std=c++$(C++Version)
 LDFLAGS=-lncurses -lsndfile -lportaudio
-# File Stuff
+
+# SRC
 SRC=src/main.cpp
 OutputDIR=bin/sizzlefx
 
-SRC_TST=tst/main.cpp
-TSTOutputDIR=bin/sizzlefx.tst
+# TESTS
+SRC_TST=test/audio_playback.cpp
+TSTOutputDIR=bin/sizzlefx-audio-playback.tst
 
-SRC_TST1=tst/wav_creator.cpp
-TSTOutputDIR1=bin/sizzlefx.tst1
+SRC_TST1=test/rectangle_movement.cpp
+TSTOutputDIR1=bin/sizzlefx-rectangle-movement.tst
 
-SRC_TST2=tst/play_audio.cpp
-TSTOutputDIR2=bin/sizzlefx.tst2
+SRC_TST2=test/wav_creator.cpp
+TSTOutputDIR2=bin/sizzlefx-wav-creator.tst
+
+SRC_TST3=test/audio_metadata.cpp
+TSTOutputDIR3=bin/sizzlefx-audio-metadata.tst
 
 all:
 	mkdir -p bin
 	$(Compiler) $(CompilerFLAGS) $(SRC) -o $(OutputDIR) $(LDFLAGS)
 
-test:
+test0:
 	mkdir -p bin
 	$(Compiler) $(CompilerFLAGS) $(SRC_TST) -o $(TSTOutputDIR) $(LDFLAGS)
 
@@ -31,6 +36,10 @@ test1:
 test2:
 	mkdir -p bin
 	$(Compiler) $(CompilerFLAGS) $(SRC_TST2) -o $(TSTOutputDIR2) $(LDFLAGS)
+
+test3:
+	mkdir -p bin
+	$(Compiler) $(CompilerFLAGS) $(SRC_TST3) -o $(TSTOutputDIR3) $(LDFLAGS)
 
 clean:
 	rm -f $(OutputDIR) $(TSTOutputDIR) $(TSTOutputDIR1) $(TSTOutputDIR2)

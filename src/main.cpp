@@ -1,15 +1,5 @@
 #include "header.hpp"
 
-void drawBanner(const std::vector<std::string>& banner,const g3dl_math::Vector2i& screen_size,const g3dl_math::Vector2i& banner_size,int spacing_y){
-  for(size_t i=0;i<banner.size();i++){
-    int row=((screen_size.y-(int)banner.size())/2)+i,col=(screen_size.x-(int)banner[i].length())/2;
-
-    // Clip if the terminal is too narrow
-    if(col<0)col=0;
-    if(row>=0 && row<screen_size.y)mvwprintw(stdscr,i+((screen_size.y-banner_size.y-spacing_y)/2),(screen_size.x-banner_size.x)/2,"%s",banner[i].c_str());
-  }
-}
-
 struct MainMenuSettings{
   std::string banner="auto"; // none, auto (detect), small, big
   bool playBGM=true; // background music
@@ -74,6 +64,7 @@ int main(){
   std::vector<std::string>options={
     "New",
     "Import",
+    " Convert",
     "Settings",
     "Exit"
   };
@@ -88,10 +79,10 @@ int main(){
     sampleRate.emplace_back(1.0);
     sampleRate.emplace_back(-1);
   }
-  Audio bgm_MainMenu({0.2f,1.0f,-0.3f,1.0f,-1.0},2,100);
+  Audio bgm_MainMenu("samples/o.wav");
   bgm_MainMenu.setIsLoop(true);
 
-  int state=0; // MainMenu=0, setting=1, editor=2
+  int state=0; // MainMenu=0, setting=1, editor=2, convert=3
   int ch;
 
   bool running=true;
@@ -101,7 +92,7 @@ int main(){
     getmaxyx(stdscr,height,width);
 
     switch(state){
-      case 1:
+      case 1: // Settings
         {
           // draw here
           box(stdscr,0,0);

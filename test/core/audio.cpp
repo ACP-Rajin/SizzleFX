@@ -143,6 +143,7 @@ class Audio{
   }
 
   private:
+  /* My verson of the wav perser
   bool loadWAV(const std::string &path){
     audioFile={};//reset all fields
 
@@ -274,7 +275,7 @@ class Audio{
     }
 
     return true;
-  }
+  }*/
   bool loadMP3(const std::string& path){
     std::cout << "I am MP3 at" << path << "\n";
     return true;

@@ -1,4 +1,5 @@
-#include "../src/header.hpp"
+#include "ui/UIC.hpp" // UI collection
+#include "utils/math.hpp"
 
 int main(){
   initscr();

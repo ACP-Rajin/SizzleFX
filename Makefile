@@ -42,4 +42,4 @@ test3:
 	$(Compiler) $(CompilerFLAGS) $(SRC_TST3) -o $(TSTOutputDIR3) $(LDFLAGS)
 
 clean:
-	rm -f $(OutputDIR) $(TSTOutputDIR) $(TSTOutputDIR1) $(TSTOutputDIR2)
+	rm -f $(OutputDIR) $(TSTOutputDIR) $(TSTOutputDIR1) $(TSTOutputDIR2) $(TSTOutputDIR3)

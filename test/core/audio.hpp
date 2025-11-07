@@ -16,6 +16,7 @@
 #include <condition_variable>
 #include <thread>
 #include <algorithm>
+#include <sndfile.h>
 
 // File-level metadata
 struct FileInfo{

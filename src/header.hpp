@@ -57,3 +57,13 @@ const std::vector<std::string>bannerSmall={
 "█████████████████ ██████ ███████████████████ ███████████████████ ████   ███         ██ ████                 ███          ████",
 "████████████ ███  ██████ ███████████████████ ███████████████████ ██      ████████████   ███                 ██            ██"
 };
+
+void drawBanner(const std::vector<std::string>& banner,const g3dl_math::Vector2i& screen_size,const g3dl_math::Vector2i& banner_size,int spacing_y){
+  for(size_t i=0;i<banner.size();i++){
+    int row=((screen_size.y-(int)banner.size())/2)+i,col=(screen_size.x-(int)banner[i].length())/2;
+
+    // Clip if the terminal is too narrow
+    if(col<0)col=0;
+    if(row>=0 && row<screen_size.y)mvwprintw(stdscr,i+((screen_size.y-banner_size.y-spacing_y)/2),(screen_size.x-banner_size.x)/2,"%s",banner[i].c_str());
+  }
+}

@@ -3,3 +3,5 @@
 
 *Project Status:*
 Still in development.
+
+Currently it supports flac, ogg, opus & wav. For mp3 libsndfile needs to be compiled separately.

@@ -16,7 +16,7 @@
 #include <condition_variable>
 #include <thread>
 #include <algorithm>
-#include <sndfile.h>
+#include <sndfile.hh>
 
 // File-level metadata
 struct FileInfo{
@@ -68,9 +68,9 @@ struct AudioFile{
   FileInfo fileInfo;
   PlaybackInfo playbackInfo;
   CodecInfo codecInfo;
-  Tags tags;
   DecodedAudio decoded;
   Analysis analysis;
+  Tags tags;
 };
 
 // ---------------------------- Utils ----------------------------
@@ -80,6 +80,12 @@ template<typename T> T readLE(std::ifstream &in){
   in.read(reinterpret_cast<char*>(&value),sizeof(T));
   return value;
 }
+// Helper to safely get string tags
+std::string getStringTag(SNDFILE* sndfile,int str_type){
+  const char* str=sf_get_string(sndfile,str_type);
+  return str ? std::string(str) : "";
+}
+
 /*
 #pragma pack(push, 1)
 struct HeaderWAV{

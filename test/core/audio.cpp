@@ -41,15 +41,7 @@ class Audio{
     decrementPaRef();
   }
 
-  bool reload(const std::string& path){
-    std::string extention=path.substr(path.find_last_of('.')+1);
-    if(extention=="wav"||extention=="wave"||extention=="WAV"||extention=="WAVE")return loadWAV(path);
-    else if(extention=="mp3"||extention=="MP3")return loadMP3(path);
-    else if(extention=="obb"||extention=="OBB")return loadOBB(path);
-    else if(extention=="ogg"||extention=="OGG")return loadOGG(path);
-    else if(extention=="opus"||extention=="OPUS")return loadOPUS(path);
-    else throw std::runtime_error("Unsupported audio format: "+extention);
-  }
+  bool reload(const std::string& path){return loadAudioFile(path);}
   void reload(const std::vector<float>& samples,int channels,int sampleRate){
     audioFile.decoded.samples=samples;
     audioFile.playbackInfo.numChannels=channels;
@@ -143,153 +135,92 @@ class Audio{
   }
 
   private:
-  /* My verson of the wav perser
-  bool loadWAV(const std::string &path){
-    audioFile={};//reset all fields
+  bool loadAudioFile(const std::string& path){
+    audioFile={}; // Reset all fields
 
+    if(!std::filesystem::exists(path)){
+      std::cerr << "File not found: " << path << std::endl;
+      return false;
+    }
     audioFile.fileInfo.filePath=path;
-    audioFile.fileInfo.format="wav";
 
-    std::ifstream in(path,std::ios::binary | std::ios::ate);
-    if(!in)return false;
+    SF_INFO sfinfo;
+    sfinfo.format=0; // Set to 0 before opening for read
 
-    audioFile.fileInfo.fileSizeBytes=in.tellg();
-    in.seekg(0,std::ios::beg);
-
-    // ---- RIFF header ----
-    char riff[4]; in.read(riff,4);
-    if(std::string(riff,4) != "RIFF")return false;
-
-    uint32_t fileSizeMinus8=readLE<uint32_t>(in);
-
-    char wave[4]; in.read(wave,4);
-    if(std::string(wave,4) != "WAVE")return false;
-
-    // ---- Read chunks ----
-    bool foundFmt=false,foundData=false;
-    uint32_t dataChunkSize=0;
-    std::vector<uint8_t>dataBuffer;
-
-    uint16_t numChannels=0;
-    uint32_t sampleRate=0;
-    uint16_t bitsPerSample=0;
-    uint16_t blockAlign=0;
-    uint32_t byteRate=0;
-
-    while(in && (!foundFmt || !foundData)){
-      char chunkId[4];
-      if(!in.read(chunkId,4))break;
-      uint32_t chunkSize=readLE<uint32_t>(in);
-
-      std::string chunk(chunkId,4);
-
-      if(chunk == "fmt "){
-        uint16_t audioFormatCode=readLE<uint16_t>(in);
-        numChannels             =readLE<uint16_t>(in);
-        sampleRate              =readLE<uint32_t>(in);
-        byteRate                =readLE<uint32_t>(in);
-        blockAlign              =readLE<uint16_t>(in);
-        bitsPerSample           =readLE<uint16_t>(in);
-
-        // Skip extra params if present
-        if(chunkSize>16)in.seekg(chunkSize-16,std::ios::cur);
-
-        // Decide sample type
-        switch(bitsPerSample){
-          case 8: break;
-          case 16:break;
-          case 24:break;
-          case 32:break;
-          default:return false;//unsupported
-        }
-
-        foundFmt=true;
-      }else if(chunk=="data"){
-        dataChunkSize=chunkSize;
-        dataBuffer.resize(chunkSize);
-        in.read(reinterpret_cast<char*>(dataBuffer.data()),chunkSize);
-        foundData=true;
-      }else{
-        // Skip irrelevant chunks
-        in.seekg(chunkSize,std::ios::cur);
-      }
+    // --- Open File ---
+    SNDFILE* sndfile=sf_open(path.c_str(),SFM_READ,&sfinfo);
+    if(!sndfile){
+      std::cerr << "Error opening file: " << sf_strerror(NULL) << std::endl;
+      return false;
     }
 
-    if(!foundFmt || !foundData)return false;
+    // --- Fill FileInfo (Partial) ---
+    audioFile.fileInfo.fileSizeBytes=std::filesystem::file_size(path);
 
-    // ---- Fill format info ----
-    uint64_t bytesPerSample=bitsPerSample / 8;
-    uint64_t totalFrames=dataChunkSize / (bytesPerSample * numChannels);
-    // audioFile.formatInfo.totalSamples=audioFile.formatInfo.totalFrames * audioFile.formatInfo.numChannels;
+    int major_format=sfinfo.format & SF_FORMAT_TYPEMASK;
+    int minor_format=sfinfo.format & SF_FORMAT_SUBMASK;
 
-    // ---- Fill playback info ----
-    audioFile.playbackInfo.sampleRate=sampleRate;
-    audioFile.playbackInfo.numChannels=numChannels;
-    audioFile.playbackInfo.durationSeconds=static_cast<double>(totalFrames) / sampleRate;
-
-    // ---- Fill codec info ----
-    audioFile.codecInfo.codecName="PCM";
-    audioFile.codecInfo.bitrateKbps=(byteRate * 8) / 1000;
-    audioFile.codecInfo.isVBR=false;
-    audioFile.codecInfo.extra["bitsPerSample"]=std::to_string(bitsPerSample);
-    audioFile.codecInfo.extra["blockAlign"]=std::to_string(blockAlign);
-    audioFile.codecInfo.extra["byteRate"]=std::to_string(byteRate);
-
-    // ---- Store decoded PCM ----
-    audioFile.decoded.totalFrames=totalFrames;
-    audioFile.decoded.samples.reserve(totalFrames * numChannels);
-
-    const uint8_t* p=dataBuffer.data();
-
-    for(uint64_t i=0;i<totalFrames * numChannels;i++){
-      float sample=0.0f;
-
-      if(bitsPerSample==8){
-        int8_t v=static_cast<int8_t>(p[i] - 128);
-        sample=static_cast<float>(v) / 128.0f;
-      }else if(bitsPerSample==16){
-        int16_t v= *reinterpret_cast<const int16_t*>(p + i * 2);
-        sample=static_cast<float>(v) / 32768.0f;
-      }else if(bitsPerSample==24){
-        int32_t v=(p[i * 3] | (p[i * 3 + 1] << 8) | (p[i * 3 + 2] << 16));
-        if(v & 0x800000)v |= ~0xFFFFFF; // sign extend
-        sample=static_cast<float>(v) / 8388608.0f;
-      }else if(bitsPerSample==32){
-        int32_t v= *reinterpret_cast<const int32_t*>(p + i * 4);
-        sample=static_cast<float>(v) / 2147483648.0f;
-      }
-
-      audioFile.decoded.samples.push_back(sample);
+    switch(major_format){
+        case SF_FORMAT_WAV:  audioFile.fileInfo.format="wav";break;
+        case SF_FORMAT_FLAC: audioFile.fileInfo.format="flac";break;
+        case SF_FORMAT_OGG:  audioFile.fileInfo.format="ogg";break;
+        case SF_FORMAT_MPEG: audioFile.fileInfo.format="mp3";break;
+        case SF_FORMAT_OPUS: audioFile.fileInfo.format="opus";break;
+        default:             audioFile.fileInfo.format="unknown";break;
     }
 
-    // ---- Simple analysis ----
+    // --- Fill PlaybackInfo ---
+    audioFile.playbackInfo.sampleRate=sfinfo.samplerate;
+    audioFile.playbackInfo.numChannels=sfinfo.channels;
+    audioFile.playbackInfo.durationSeconds=static_cast<double>(sfinfo.frames) / sfinfo.samplerate;
+
+    // --- Fill CodecInfo ---
+    audioFile.codecInfo.codecName="libsndfile ("+audioFile.fileInfo.format+")";
+
+    audioFile.codecInfo.extra["major"]=std::to_string(major_format);
+    audioFile.codecInfo.extra["minor"]=std::to_string(minor_format);
+
+    audioFile.codecInfo.isVBR=(audioFile.fileInfo.format=="mp3" || audioFile.fileInfo.format=="ogg");
+
+    // Decode samples
+    audioFile.decoded.totalFrames=sfinfo.frames;
+    sf_count_t total_samples=sfinfo.frames * sfinfo.channels;
+    audioFile.decoded.samples.resize(total_samples);
+
+    sf_count_t read_frames=sf_readf_float(sndfile,audioFile.decoded.samples.data(),sfinfo.frames);
+
+    if(read_frames != sfinfo.frames){
+      audioFile.decoded.samples.resize(read_frames * sfinfo.channels);
+      audioFile.decoded.totalFrames=read_frames;
+    }
+
+    // --- Simple Analysis ---
     if(!audioFile.decoded.samples.empty()){
-      audioFile.analysis.minAmplitude= *std::min_element(audioFile.decoded.samples.begin(),audioFile.decoded.samples.end());
-      audioFile.analysis.maxAmplitude= *std::max_element(audioFile.decoded.samples.begin(),audioFile.decoded.samples.end());
+      auto minmax_pair=std::minmax_element(audioFile.decoded.samples.begin(),audioFile.decoded.samples.end());
+      audioFile.analysis.minAmplitude = *minmax_pair.first;
+      audioFile.analysis.maxAmplitude = *minmax_pair.second;
 
+      // Calculate RMS
       double sumSq=0.0;
-      for(float s : audioFile.decoded.samples)sumSq += s*s;
+      for(float s:audioFile.decoded.samples)sumSq += s * s;
       audioFile.analysis.rmsAmplitude=std::sqrt(sumSq / audioFile.decoded.samples.size());
 
-      audioFile.analysis.clippingDetected=(audioFile.analysis.maxAmplitude >= 0.999f || audioFile.analysis.minAmplitude <= -0.999f);
+      // Clipping detection (normalized float range is [-1.0, 1.0])
+      audioFile.analysis.clippingDetected=(audioFile.analysis.maxAmplitude>=0.999f || audioFile.analysis.minAmplitude <= -0.999f);
     }
 
-    return true;
-  }*/
-  bool loadMP3(const std::string& path){
-    std::cout << "I am MP3 at" << path << "\n";
-    return true;
-  }
-  bool loadOBB(const std::string& path){
-    std::cout << "I am OBB at" << path << "\n";
-    return true;
-  }
-  bool loadOGG(const std::string& path){
-    std::cout << "I am OGG at" << path << "\n";
-    return true;
-  }
-  bool loadOPUS(const std::string& path){
-    std::cout << "I am OPUS at" << path << "\n";
+    // tags
+    if(sndfile){
+      audioFile.tags.title=getStringTag(sndfile,SF_STR_TITLE);
+      audioFile.tags.artist=getStringTag(sndfile,SF_STR_ARTIST);
+      audioFile.tags.album=getStringTag(sndfile,SF_STR_ALBUM);
+      audioFile.tags.year=getStringTag(sndfile,SF_STR_DATE);
+
+      audioFile.tags.extra["comment"]=getStringTag(sndfile,SF_STR_COMMENT);
+      audioFile.tags.extra["genre"]=getStringTag(sndfile,SF_STR_GENRE);
+      audioFile.tags.extra["tracknumber"]=getStringTag(sndfile,SF_STR_TRACKNUMBER);
+    }
+    sf_close(sndfile);
     return true;
   }
 
@@ -413,3 +344,34 @@ class Audio{
 std::atomic<int> Audio::paInstanceCount{0};
 std::once_flag Audio::paInitFlag;
 std::mutex Audio::streamOpenMutex;
+
+
+  /* TEMPLATE
+  bool loadAudioFile(const std::string& path){
+    audioFile.fileInfo.filePath;
+    audioFile.fileInfo.format;
+    audioFile.fileInfo.fileSizeBytes;
+
+    audioFile.playbackInfo.durationSeconds;
+    audioFile.playbackInfo.sampleRate;
+    audioFile.playbackInfo.numChannels;
+
+    audioFile.codecInfo.codecName;
+    audioFile.codecInfo.bitrateKbps;
+    audioFile.codecInfo.isVBR;
+    audioFile.codecInfo.extra;
+
+    audioFile.decoded.samples;
+    audioFile.decoded.totalFrames;
+
+    audioFile.analysis.minAmplitude;
+    audioFile.analysis.maxAmplitude;
+    audioFile.analysis.rmsAmplitude;
+    audioFile.analysis.clippingDetected;
+
+    audioFile.tags.title;
+    audioFile.tags.artist;
+    audioFile.tags.album;
+    audioFile.tags.year;
+    audioFile.tags.extra;
+  }*/

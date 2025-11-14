@@ -4,9 +4,11 @@ class Audio{
   public:
   AudioFile audioFile;
 
-  int SINE_WAVE=0;
-  int SQUARE_WAVE=1;
-  int SAWTOOTH_WAVE=2;
+  enum Wave:int{
+  SINE_WAVE=0,
+  SQUARE_WAVE=1,
+  SAWTOOTH_WAVE=2
+  };
 
   enum PlaybackState:int{
     Stopped=0,
@@ -43,6 +45,7 @@ class Audio{
 
   bool reload(const std::string& path){return loadAudioFile(path);}
   void reload(const std::vector<float>& samples,int channels,int sampleRate){
+    audioFile={};
     audioFile.decoded.samples=samples;
     audioFile.playbackInfo.numChannels=channels;
     audioFile.playbackInfo.sampleRate=sampleRate;
@@ -65,8 +68,6 @@ class Audio{
     if(!hasDecodedData())return false;
 
     PlaybackState expected=PlaybackState::Stopped;
-    // If we were stopped, set currentFrame to currentFrame (could be non-zero if user seeks while stopped).
-    // If we were paused, calling play should behave like resume()
     if(state.load()==PlaybackState::Playing)return true;
 
     if(!openStreamIfNeeded())return false;

@@ -85,7 +85,7 @@ int main(){
   //   return 1;
   // }
 
-  Audio audio("samples/output.wav");
+  Audio audio("samples/childrenCounting.wav");
 
   std::string command;
   std::string tmp,tmpSamples,tmpChannels,tmpSampleRate;
@@ -111,8 +111,17 @@ int main(){
         std::vector<float>samples=audio.audioFile.decoded.samples;
         std::cout << "Samples: " << samples.size() << "\nSample Rate: " << audio.audioFile.playbackInfo.sampleRate << "\n";
       }
+      if(word[0]=="pause")audio.pause();
+      if(word[0]=="resume")audio.resume();
+      if(word[0]=="stop")audio.stop();
+      if(word[0]=="loop")audio.setIsLoop(word[1]=="true");
+      if(word[0]=="setpos")audio.setPositionInSeconds(std::stod(word[1]));
       // if(word[0]=="header")printHeader(audio.header);
       // if(word[0]=="metadata")printMetadata(audio);
+      if(word[0]=="status"){
+        printf("Status: %s\n",audio.getState()==Audio::PlaybackState::Playing?(audio.getIsLoop()?"Playing (Looping)":"Playing"):(audio.getIsLoop()?"Loop Ready":"Stopped"));
+        printf("Position: %.2lf / %.2f sec\n",audio.getPositionInSeconds(),audio.getDuration());
+      }
     }
   }
 

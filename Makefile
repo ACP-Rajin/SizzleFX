@@ -1,7 +1,7 @@
 # Compiler Stuff
 Compiler=g++
 C++Version=17
-CompilerFLAGS=-Wall -Wextra -std=c++$(C++Version)
+CompilerFLAGS=-Wall -Wextra -std=c++$(C++Version) -g
 LDFLAGS=-lncurses -lsndfile -lportaudio
 
 # SRC

@@ -4,6 +4,8 @@ C++Version=17
 CompilerFLAGS=-Wall -Wextra -std=c++$(C++Version) -g
 LDFLAGS=-lncurses -lsndfile -lportaudio
 
+ReleaseCompilerFLAGS=-Wall -Wextra -std=c++$(C++Version) -O2
+
 # SRC
 SRC=src/main.cpp
 OutputDIR=bin/sizzlefx
@@ -22,6 +24,10 @@ SRC_TST3=test/audio_metadata.cpp
 TSTOutputDIR3=bin/sizzlefx-audio-metadata.tst
 
 all:
+	mkdir -p bin
+	$(Compiler) $(ReleaseCompilerFLAGS) $(SRC) -o $(OutputDIR) $(LDFLAGS)
+
+release:
 	mkdir -p bin
 	$(Compiler) $(CompilerFLAGS) $(SRC) -o $(OutputDIR) $(LDFLAGS)
 

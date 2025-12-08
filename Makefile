@@ -25,11 +25,11 @@ TSTOutputDIR3=bin/sizzlefx-audio-metadata.tst
 
 all:
 	mkdir -p bin
-	$(Compiler) $(ReleaseCompilerFLAGS) $(SRC) -o $(OutputDIR) $(LDFLAGS)
+	$(Compiler) $(CompilerFLAGS) $(SRC) -o $(OutputDIR) $(LDFLAGS)
 
 release:
 	mkdir -p bin
-	$(Compiler) $(CompilerFLAGS) $(SRC) -o $(OutputDIR) $(LDFLAGS)
+	$(Compiler) $(ReleaseCompilerFLAGS) $(SRC) -o $(OutputDIR) $(LDFLAGS)
 
 test0:
 	mkdir -p bin

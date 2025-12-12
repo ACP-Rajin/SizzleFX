@@ -226,7 +226,7 @@ public:
     wattroff(window,COLOR_PAIR(colorPairID_m));
   }
 
-  void setLabel(std::string &label){this->label=label;}
+  void setLabel(const std::string &label){this->label=label;}
 
   std::string getLabel()const{return label;}
   Rectangle getRectangle()const{return rect;}

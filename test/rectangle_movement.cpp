@@ -1,5 +1,5 @@
-#include "ui/UIC.hpp" // UI collection
-#include "utils/math.hpp"
+#include "graphics/ui/Button.hpp"
+#include "math/Math.hpp"
 
 int main(){
   initscr();

@@ -4,9 +4,9 @@
 #include <atomic>
 #include <functional>
 
-#include "ui/UIC.hpp" // UI collection
+#include "graphics/ui/Button.hpp"
 #include "core/audio.hpp"
-#include "utils/math.hpp"
+#include "math/Math.hpp"
 
 const std::vector<std::string>bannerSmall={
 "     █████████████  ███                                            ██                     ",

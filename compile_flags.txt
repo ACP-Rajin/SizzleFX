@@ -1,0 +1,4 @@
+-Ilibs/G3DL/include
+-std=c++17
+-Wall
+-Wextra

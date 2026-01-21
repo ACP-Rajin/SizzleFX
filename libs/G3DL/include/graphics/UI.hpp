@@ -53,12 +53,12 @@ class UI{
 
   // Getters
   virtual g3dl_math::Vector2i getPosition()const{return pos_m;}
-  virtual g3dl_math::Vector2i getX()const{return pos_m.x;}
-  virtual g3dl_math::Vector2i getY()const{return pos_m.y;}
+  virtual int getX()const{return pos_m.x;}
+  virtual int getY()const{return pos_m.y;}
 
   virtual g3dl_math::Vector2i getSize()const{return size_m;}
-  virtual g3dl_math::Vector2i getWidth()const{return size_m.x;}
-  virtual g3dl_math::Vector2i getHeight()const{return size_m.y;}
+  virtual int getWidth()const{return size_m.x;}
+  virtual int getHeight()const{return size_m.y;}
 
   virtual short getColorPairID()const{return colorPairID_m;}
   virtual bool getHighlighted()const{return highlighted_m;}

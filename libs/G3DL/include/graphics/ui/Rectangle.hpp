@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "../UI.hpp"
 
 class Rectangle : public UI{
@@ -30,7 +32,9 @@ class Rectangle : public UI{
   Border bord;
 
   public:
-  Rectangle(const g3dl_math::Vector2i& position,const g3dl_math::Vector2i& size);
+  Rectangle();
+  Rectangle(const Vector2i& position,const Vector2i& size);
+
   void draw(WINDOW* window)override;
 
   void setFillCharacter(std::string fillCharacter);

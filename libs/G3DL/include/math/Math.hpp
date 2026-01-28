@@ -20,8 +20,6 @@
 #include <cmath>
 #include <cassert>
 
-namespace g3dl_math{
-
 // Forward declarations
 struct Vector2f;
 struct Vector3f;
@@ -552,5 +550,3 @@ inline Vector4i divide(const Vector4i& vec4,int scalar){
   int inv=1.0f/scalar;
   return Vector4i(vec4.x*inv,vec4.y*inv,vec4.z*inv,vec4.w*inv);
 }
-
-} // namespace g3dl_math

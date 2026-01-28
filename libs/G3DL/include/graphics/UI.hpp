@@ -16,15 +16,13 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
 #include <ncurses.h>
 
 #include "../math/Math.hpp"
 
 class UI{
   protected:
-  g3dl_math::Vector2i pos_m,size_m;
+  Vector2i pos_m,size_m;
   short colorPairID_m=1;
   bool highlighted_m=false;
 
@@ -39,12 +37,12 @@ class UI{
 
   // Setters
   virtual void setPosition(int x,int y){pos_m.set(x,y);}
-  virtual void setPosition(g3dl_math::Vector2i& position){pos_m.set(position);}
+  virtual void setPosition(const Vector2i& position){pos_m.set(position);}
   virtual void setX(int x){pos_m.x=x;}
   virtual void setY(int y){pos_m.y=y;}
 
   virtual void setSize(int width,int height){size_m.set(width,height);}
-  virtual void setSize(g3dl_math::Vector2i& size){size_m.set(size);}
+  virtual void setSize(const Vector2i& size){size_m.set(size);}
   virtual void setWidth(int width){size_m.x=width;}
   virtual void setHeight(int height){size_m.y=height;}
 
@@ -52,11 +50,11 @@ class UI{
   virtual void setHighlighted(bool highlighted){highlighted_m=highlighted;}
 
   // Getters
-  virtual g3dl_math::Vector2i getPosition()const{return pos_m;}
+  virtual Vector2i getPosition()const{return pos_m;}
   virtual int getX()const{return pos_m.x;}
   virtual int getY()const{return pos_m.y;}
 
-  virtual g3dl_math::Vector2i getSize()const{return size_m;}
+  virtual Vector2i getSize()const{return size_m;}
   virtual int getWidth()const{return size_m.x;}
   virtual int getHeight()const{return size_m.y;}
 
@@ -65,7 +63,7 @@ class UI{
 
   // utils
   // --- Map RGB -> ncurses 8 colors ---
-  static short rgbToBasicColor(const g3dl_math::Vector3i& rgb){
+  static short rgbToBasicColor(const Vector3i& rgb){
     int r=rgb.x,g=rgb.y,b=rgb.z;
     if(r>200 && g<100 && b<100)return COLOR_RED;
     if(g>200 && r<100 && b<100)return COLOR_GREEN;
@@ -78,14 +76,14 @@ class UI{
   }
 
   // --- Map RGB -> 256-color cube ---
-  static short rgbTo256Color(const g3dl_math::Vector3i& rgb){
+  static short rgbTo256Color(const Vector3i& rgb){
     int r=rgb.x * 6/256;
     int g=rgb.y * 6/256;
     int b=rgb.z * 6/256;
     return 16+(36 * r)+(6 * g)+b; // 256-color cube index
   }
 
-  static void initColor(short colorPairID,const g3dl_math::Vector3i& foregroundColor,const g3dl_math::Vector3i& backgroundColor,ColorMode mode=ColorMode::DEFAULT){
+  static void initColor(short colorPairID,const Vector3i& foregroundColor,const Vector3i& backgroundColor,ColorMode mode=ColorMode::DEFAULT){
     if(mode==ColorMode::DEFAULT){
       const char* colorterm=getenv("COLORTERM");
       if(colorterm){

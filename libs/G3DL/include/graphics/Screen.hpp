@@ -25,7 +25,7 @@ class Screen{
   Screen();
 	Screen(uint32_t width,uint32_t height);
 
-  void set(const Screen screen);
+  void set(const Screen& screen);
 	void set(uint32_t width,uint32_t height);
 
   void setWidth(uint32_t width);

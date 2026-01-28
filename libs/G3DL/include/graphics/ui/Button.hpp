@@ -23,7 +23,8 @@ class Button : public UI{
   std::string label;
 
   public:
-  Button(const g3dl_math::Vector2i& position,const g3dl_math::Vector2i& size,const std::string& text);
+  Button();
+  Button(const Vector2i& position,const Vector2i& size,const std::string& text);
 
   void draw(WINDOW* window)override;
 
